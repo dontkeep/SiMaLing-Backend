@@ -56,7 +56,6 @@ func CreateUser(c *gin.Context) {
 		NIK:      body.NIK,
 		Name:     body.Name,
 		Address:  body.Address,
-		Funds:    body.Funds,
 		Role_Id:  body.Role_Id,
 	}
 
@@ -71,5 +70,39 @@ func CreateUser(c *gin.Context) {
 
 	c.JSON(200, gin.H{
 		"message": "User has been created",
+	})
+}
+
+func UpdateUser(c *gin.Context) {
+	id := c.Param("id")
+	var user models.User
+
+	var body struct {
+		Phone_No string
+		NIK      string
+		Name     string
+		Address  string
+		Role_Id  uint
+	}
+
+	c.BindJSON(&body)
+
+	user.Phone_No = body.Phone_No
+	user.NIK = body.NIK
+	user.Name = body.Name
+	user.Address = body.Address
+	user.Role_Id = body.Role_Id
+
+	result := initializers.DB.Update(id, &user)
+
+	if result.Error != nil {
+		c.JSON(400, gin.H{
+			"message": "Failed to update user",
+		})
+		return
+	}
+
+	c.JSON(200, gin.H{
+		"message": "User has been updated",
 	})
 }
