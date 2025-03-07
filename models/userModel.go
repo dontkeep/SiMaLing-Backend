@@ -9,7 +9,6 @@ type User struct {
 	NIK      string `gorm:"unique"`
 	Name     string
 	Address  string
-	Funds    string
 	Role     Roles `gorm:"foreignKey:Role_Id"`
 	Role_Id  uint
 }
