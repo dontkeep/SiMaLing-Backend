@@ -4,7 +4,7 @@ import "gorm.io/gorm"
 
 type Roles struct {
 	gorm.Model
-	Role_Id   uint `gorm:"primaryKey"`
+	ID        uint `gorm:"primaryKey"`
 	Role_Name string
 }
 
