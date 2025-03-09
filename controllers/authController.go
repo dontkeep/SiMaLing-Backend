@@ -1,8 +1,6 @@
 package controllers
 
 import (
-	"time"
-
 	"github.com/dontkeep/simaling-backend/initializers"
 	"github.com/dontkeep/simaling-backend/models"
 	"github.com/gin-gonic/gin"
@@ -48,13 +46,8 @@ func Login(c *gin.Context) {
 		return
 	}
 
-	expirationTime := time.Now().Add(1 * time.Hour)
-
 	claims := &Claims{
 		UserID: user.ID,
-		RegisteredClaims: jwt.RegisteredClaims{
-			ExpiresAt: jwt.NewNumericDate(expirationTime),
-		},
 	}
 
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
@@ -95,6 +88,6 @@ func Authenticate(c *gin.Context) {
 		return
 	}
 
-	c.Set("NIK", claims.UserID)
+	c.Set("user_id", claims.UserID)
 	c.Next()
 }
