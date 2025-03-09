@@ -7,6 +7,7 @@ type User struct {
 	ID       uint   `gorm:"primaryKey"`
 	Phone_No string `gorm:"unique"`
 	NIK      string `gorm:"unique"`
+	Password string
 	Name     string
 	Address  string
 	Role     Roles `gorm:"foreignKey:Role_Id"`

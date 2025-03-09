@@ -43,6 +43,7 @@ func CreateUser(c *gin.Context) {
 	var body struct {
 		Phone_No string
 		NIK      string
+		Password string
 		Name     string
 		Address  string
 		Funds    string
@@ -54,6 +55,7 @@ func CreateUser(c *gin.Context) {
 	user := models.User{
 		Phone_No: body.Phone_No,
 		NIK:      body.NIK,
+		Password: body.Password,
 		Name:     body.Name,
 		Address:  body.Address,
 		Role_Id:  body.Role_Id,
@@ -80,6 +82,7 @@ func UpdateUser(c *gin.Context) {
 	var body struct {
 		Phone_No string
 		NIK      string
+		Password string
 		Name     string
 		Address  string
 		Role_Id  uint
@@ -89,6 +92,7 @@ func UpdateUser(c *gin.Context) {
 
 	user.Phone_No = body.Phone_No
 	user.NIK = body.NIK
+	user.Password = body.Password
 	user.Name = body.Name
 	user.Address = body.Address
 	user.Role_Id = body.Role_Id
@@ -104,5 +108,23 @@ func UpdateUser(c *gin.Context) {
 
 	c.JSON(200, gin.H{
 		"message": "User has been updated",
+	})
+}
+
+func DeleteUser(c *gin.Context) {
+	id := c.Param("id")
+	var user models.User
+
+	result := initializers.DB.Delete(&user, id)
+
+	if result.Error != nil {
+		c.JSON(400, gin.H{
+			"message": "Failed to delete user",
+		})
+		return
+	}
+
+	c.JSON(200, gin.H{
+		"message": "User has been deleted",
 	})
 }
