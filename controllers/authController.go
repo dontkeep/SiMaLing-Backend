@@ -67,7 +67,20 @@ func Login(c *gin.Context) {
 
 func Logout(c *gin.Context) {
 	// Invalidate token
+	tokenString := c.GetHeader("Authorization")
+	if tokenString == "" {
+		c.JSON(400, gin.H{
+			"message": "Token not found",
+		})
+		return
+	}
 
+	if err := blacklistToken(tokenString); err != nil {
+		c.JSON(500, gin.H{
+			"message": "Failed to blacklist token",
+		})
+		return
+	}
 	c.JSON(200, gin.H{
 		"message": "Logout success",
 	})
@@ -75,8 +88,22 @@ func Logout(c *gin.Context) {
 
 func Authenticate(c *gin.Context) {
 	tokenString := c.GetHeader("Authorization")
-	claims := &Claims{}
+	if tokenString == "" {
+		c.JSON(400, gin.H{
+			"message": "Token not found",
+		})
+		return
+	}
 
+	var blacklistToken models.BlacklistToken
+	if err := initializers.DB.Where("token = ?", tokenString).First(&blacklistToken).Error; err == nil {
+		c.JSON(401, gin.H{
+			"message": "Token has been blacklisted",
+		})
+		return
+	}
+
+	claims := &Claims{}
 	token, err := jwt.ParseWithClaims(tokenString, claims, func(token *jwt.Token) (interface{}, error) {
 		return jwtKey, nil
 	})
@@ -90,4 +117,10 @@ func Authenticate(c *gin.Context) {
 
 	c.Set("user_id", claims.UserID)
 	c.Next()
+}
+
+func blacklistToken(tokenString string) error {
+	blacklistToken := models.BlacklistToken{Token: tokenString}
+	result := initializers.DB.Create(&blacklistToken)
+	return result.Error
 }
