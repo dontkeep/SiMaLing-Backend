@@ -31,6 +31,8 @@ func main() {
 		authorized.GET("/roles", controllers.GetAllRoles)
 		authorized.GET("/funds", controllers.GetFunds)
 		authorized.POST("/users", controllers.CreateUser)
+		authorized.POST("/funds", controllers.CreateFunds)
+		authorized.POST("/logout", controllers.Logout)
 	}
 
 	r.Run()
