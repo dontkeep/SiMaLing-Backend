@@ -10,4 +10,5 @@ type Funds struct {
 	Amount      float64
 	Description string
 	Is_Income   bool
+	Status      string
 }

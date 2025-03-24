@@ -58,6 +58,7 @@ func CreateFunds(c *gin.Context) {
 		Amount:      float64(body.Amount),
 		Is_Income:   body.Is_Income,
 		Description: body.Description,
+		Status:      "Pending",
 	}
 
 	result := initializers.DB.Create(&funds)
@@ -184,5 +185,67 @@ func GetFundsById(c *gin.Context) {
 
 	c.JSON(200, gin.H{
 		"data": funds,
+	})
+}
+
+func AcceptFunds(c *gin.Context) {
+	id := c.Param("id")
+	var funds models.Funds
+
+	// Retrieve the funds record by ID
+	result := initializers.DB.Where("id = ?", id).First(&funds)
+	if result.Error != nil {
+		c.JSON(400, gin.H{
+			"message": "Failed to get funds",
+		})
+		return
+	}
+
+	// Update the status to "Accepted"
+	funds.Status = "Accepted"
+
+	// Save the updated funds record
+	result = initializers.DB.Save(&funds)
+	if result.Error != nil {
+		c.JSON(400, gin.H{
+			"message": "Failed to accept funds",
+		})
+		return
+	}
+
+	c.JSON(200, gin.H{
+		"message": "Funds accepted",
+		"data":    funds,
+	})
+}
+
+func RejectFunds(c *gin.Context) {
+	id := c.Param("id")
+	var funds models.Funds
+
+	// Retrieve the funds record by ID
+	result := initializers.DB.Where("id = ?", id).First(&funds)
+	if result.Error != nil {
+		c.JSON(400, gin.H{
+			"message": "Failed to get funds",
+		})
+		return
+	}
+
+	// Update the status to "Rejected"
+	funds.Status = "Rejected"
+
+	// Save the updated funds record
+	result = initializers.DB.Save(&funds)
+	if result.Error != nil {
+		c.JSON(400, gin.H{
+			"message": "Failed to reject funds",
+		})
+		return
+	}
+
+	c.JSON(200, gin.H{
+		"message": "Funds rejected",
+		"data":    funds,
 	})
 }
