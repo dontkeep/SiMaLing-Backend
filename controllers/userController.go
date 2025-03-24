@@ -68,17 +68,28 @@ func GetUser(c *gin.Context) {
 
 func CreateUser(c *gin.Context) {
 	var body struct {
-		Phone_No string
-		NIK      string
-		Password string
-		Name     string
-		Address  string
-		Funds    string
-		Role_Id  uint
+		Phone_No      string
+		NIK           string
+		Password      string
+		Name          string
+		Address       string
+		Role_Id       uint
+		FamilyMembers []struct {
+			NIK    string `json:"nik"`
+			Name   string `json:"name"`
+			Status string `json:"status"` // "wife" or "child"
+		} `json:"family_members"`
 	}
 
-	c.BindJSON(&body)
+	// Parse the request body
+	if err := c.BindJSON(&body); err != nil {
+		c.JSON(400, gin.H{
+			"message": "Invalid request body",
+		})
+		return
+	}
 
+	// Create the user
 	user := models.User{
 		Phone_No: body.Phone_No,
 		NIK:      body.NIK,
@@ -89,7 +100,6 @@ func CreateUser(c *gin.Context) {
 	}
 
 	result := initializers.DB.Create(&user)
-
 	if result.Error != nil {
 		c.JSON(400, gin.H{
 			"message": "Failed to create user",
@@ -97,8 +107,30 @@ func CreateUser(c *gin.Context) {
 		return
 	}
 
+	// Create family members if provided
+	if len(body.FamilyMembers) > 0 {
+		var familyMembers []models.FamilyMembers
+		for _, fm := range body.FamilyMembers {
+			familyMembers = append(familyMembers, models.FamilyMembers{
+				NIK:             fm.NIK,
+				Name:            fm.Name,
+				Status:          fm.Status,
+				HeadOfFamily_Id: user.ID,
+			})
+		}
+
+		result = initializers.DB.Create(&familyMembers)
+		if result.Error != nil {
+			c.JSON(400, gin.H{
+				"message": "Failed to create family members",
+			})
+			return
+		}
+	}
+
 	c.JSON(200, gin.H{
-		"message": "User has been created",
+		"message": "User and family members created successfully",
+		"user":    user,
 	})
 }
 
@@ -106,17 +138,39 @@ func UpdateUser(c *gin.Context) {
 	id := c.Param("id")
 	var user models.User
 
-	var body struct {
-		Phone_No string
-		NIK      string
-		Password string
-		Name     string
-		Address  string
-		Role_Id  uint
+	// Check if the user exists
+	result := initializers.DB.First(&user, id)
+	if result.Error != nil {
+		c.JSON(404, gin.H{
+			"message": "User not found",
+		})
+		return
 	}
 
-	c.BindJSON(&body)
+	// Parse the request body
+	var body struct {
+		Phone_No      string
+		NIK           string
+		Password      string
+		Name          string
+		Address       string
+		Role_Id       uint
+		FamilyMembers []struct {
+			ID     uint   `json:"id"` // Include ID to identify existing family members
+			NIK    string `json:"nik"`
+			Name   string `json:"name"`
+			Status string `json:"status"` // "wife" or "child"
+		} `json:"family_members"`
+	}
 
+	if err := c.BindJSON(&body); err != nil {
+		c.JSON(400, gin.H{
+			"message": "Invalid request body",
+		})
+		return
+	}
+
+	// Update the user fields
 	user.Phone_No = body.Phone_No
 	user.NIK = body.NIK
 	user.Password = body.Password
@@ -124,8 +178,8 @@ func UpdateUser(c *gin.Context) {
 	user.Address = body.Address
 	user.Role_Id = body.Role_Id
 
-	result := initializers.DB.Update(id, &user)
-
+	// Save the updated user
+	result = initializers.DB.Save(&user)
 	if result.Error != nil {
 		c.JSON(400, gin.H{
 			"message": "Failed to update user",
@@ -133,8 +187,52 @@ func UpdateUser(c *gin.Context) {
 		return
 	}
 
+	// Process family members
+	var existingFamilyMembers []models.FamilyMembers
+	initializers.DB.Where("head_of_family_id = ?", user.ID).Find(&existingFamilyMembers)
+
+	// Map existing family members by ID for quick lookup
+	existingFamilyMap := make(map[uint]models.FamilyMembers)
+	for _, fm := range existingFamilyMembers {
+		existingFamilyMap[fm.ID] = fm
+	}
+
+	// Track IDs of family members in the request
+	requestedFamilyIDs := make(map[uint]bool)
+
+	for _, fm := range body.FamilyMembers {
+		requestedFamilyIDs[fm.ID] = true
+
+		if fm.ID == 0 {
+			// Add new family member
+			newFamilyMember := models.FamilyMembers{
+				NIK:             fm.NIK,
+				Name:            fm.Name,
+				Status:          fm.Status,
+				HeadOfFamily_Id: user.ID,
+			}
+			initializers.DB.Create(&newFamilyMember)
+		} else {
+			// Update existing family member
+			if existingFamily, exists := existingFamilyMap[fm.ID]; exists {
+				existingFamily.NIK = fm.NIK
+				existingFamily.Name = fm.Name
+				existingFamily.Status = fm.Status
+				initializers.DB.Save(&existingFamily)
+			}
+		}
+	}
+
+	// Delete family members not in the request
+	for _, existingFamily := range existingFamilyMembers {
+		if !requestedFamilyIDs[existingFamily.ID] {
+			initializers.DB.Delete(&existingFamily)
+		}
+	}
+
 	c.JSON(200, gin.H{
-		"message": "User has been updated",
+		"message": "User and family members have been updated",
+		"user":    user,
 	})
 }
 
