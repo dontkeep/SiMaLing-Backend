@@ -6,6 +6,33 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
+func CreateAdminAccount() error {
+	var user models.User
+	initializers.DB.Where("role_id = ?", 1).First(&user)
+
+	if user.ID != 0 {
+		return nil
+	}
+
+	// modify this to your own admin account
+	user = models.User{
+		Phone_No: "081234567890",
+		NIK:      "1234567890123456",
+		Password: "password",
+		Name:     "Admin",
+		Address:  "Jl. Admin",
+		Role_Id:  1,
+	}
+
+	result := initializers.DB.Create(&user)
+
+	if result.Error != nil {
+		return result.Error
+	}
+
+	return nil
+}
+
 func GetAllUsers(c *gin.Context) {
 	var users []models.User
 	result := initializers.DB.Find(&users)

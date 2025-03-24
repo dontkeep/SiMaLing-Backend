@@ -15,6 +15,10 @@ func init() {
 	if err := controllers.CreateDefaultRoles(); err != nil {
 		log.Fatalf("Failed to create default roles: %v", err)
 	}
+
+	if err := controllers.CreateAdminAccount(); err != nil {
+		log.Fatalf("Failed to create admin account: %v", err)
+	}
 }
 
 func main() {

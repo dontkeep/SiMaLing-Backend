@@ -40,6 +40,50 @@ func DeleteSecurityRecord(c *gin.Context) {
 	})
 }
 
+func GetSecurityRecordByNik(c *gin.Context) {
+	// receive token from context, get the user id from the token, and get the user nik from the user id, then get the security record by the nik, can be used by all roles
+	userID, exists := c.Get("user_id")
+	if !exists {
+		c.JSON(400, gin.H{
+			"message": "User not authenticated",
+		})
+		return
+	}
+
+	// Type assert userID to uint
+	uid, ok := userID.(uint)
+	if !ok {
+		c.JSON(400, gin.H{
+			"message": "Invalid user ID",
+		})
+		return
+	}
+
+	// Retrieve the user by ID
+	var user models.User
+	if err := initializers.DB.Where("id = ?", uid).First(&user).Error; err != nil {
+		c.JSON(404, gin.H{
+			"message": "User not found",
+		})
+		return
+	}
+
+	// Retrieve security records by the user's NIK
+	var securityRecords []models.SecurityRecord
+	if err := initializers.DB.Where("security_id = ?", user.ID).Find(&securityRecords).Error; err != nil {
+		c.JSON(500, gin.H{
+			"message": "Failed to retrieve security records",
+		})
+		return
+	}
+
+	// Return the security records
+	c.JSON(200, gin.H{
+		"message": "Security records retrieved successfully",
+		"data":    securityRecords,
+	})
+}
+
 // only security can create security record
 func CreateSecurityRecord(c *gin.Context) {
 	// Get the role from the context
