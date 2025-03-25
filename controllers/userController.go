@@ -1,6 +1,8 @@
 package controllers
 
 import (
+	"strconv"
+
 	"github.com/dontkeep/simaling-backend/initializers"
 	"github.com/dontkeep/simaling-backend/models"
 	"github.com/gin-gonic/gin"
@@ -34,9 +36,33 @@ func CreateAdminAccount() error {
 }
 
 func GetAllUsers(c *gin.Context) {
-	var users []models.User
-	result := initializers.DB.Find(&users)
+	// Get query parameters for pagination
+	page := c.DefaultQuery("page", "1")    // Default to page 1 if not provided
+	limit := c.DefaultQuery("limit", "10") // Default to 10 records per page if not provided
 
+	// Convert query parameters to integers
+	pageInt, err := strconv.Atoi(page)
+	if err != nil || pageInt < 1 {
+		c.JSON(400, gin.H{
+			"message": "Invalid page number",
+		})
+		return
+	}
+
+	limitInt, err := strconv.Atoi(limit)
+	if err != nil || limitInt < 1 {
+		c.JSON(400, gin.H{
+			"message": "Invalid limit number",
+		})
+		return
+	}
+
+	// Calculate the offset
+	offset := (pageInt - 1) * limitInt
+
+	// Retrieve paginated users from the database
+	var users []models.User
+	result := initializers.DB.Limit(limitInt).Offset(offset).Find(&users)
 	if result.Error != nil {
 		c.JSON(400, gin.H{
 			"message": "Failed to get users",
@@ -44,8 +70,17 @@ func GetAllUsers(c *gin.Context) {
 		return
 	}
 
+	// Count the total number of users
+	var total int64
+	initializers.DB.Model(&models.User{}).Count(&total)
+
+	// Return the paginated response
 	c.JSON(200, gin.H{
-		"data": users,
+		"data":       users,
+		"total":      total,
+		"page":       pageInt,
+		"limit":      limitInt,
+		"totalPages": (total + int64(limitInt) - 1) / int64(limitInt), // Calculate total pages
 	})
 }
 
