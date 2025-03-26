@@ -1,6 +1,8 @@
 package controllers
 
 import (
+	"strconv"
+
 	"github.com/dontkeep/simaling-backend/initializers"
 	"github.com/dontkeep/simaling-backend/models"
 	"github.com/gin-gonic/gin"
@@ -8,19 +10,51 @@ import (
 
 // GetFunds gets all funds
 func GetFunds(c *gin.Context) {
+	// Get query parameters for pagination
+	page := c.DefaultQuery("page", "1")    // Default to page 1 if not provided
+	limit := c.DefaultQuery("limit", "10") // Default to 10 records per page if not provided
+
+	// Convert query parameters to integers
+	pageInt, err := strconv.Atoi(page)
+	if err != nil || pageInt < 1 {
+		c.JSON(400, gin.H{
+			"message": "Invalid page number",
+		})
+		return
+	}
+
+	limitInt, err := strconv.Atoi(limit)
+	if err != nil || limitInt < 1 {
+		c.JSON(400, gin.H{
+			"message": "Invalid limit number",
+		})
+		return
+	}
+
+	// Calculate the offset
+	offset := (pageInt - 1) * limitInt
+
+	// Retrieve paginated funds from the database
 	var funds []models.Funds
-
-	result := initializers.DB.Find(&funds)
-
-	if result != nil {
+	result := initializers.DB.Limit(limitInt).Offset(offset).Find(&funds)
+	if result.Error != nil {
 		c.JSON(400, gin.H{
 			"message": "Failed to get funds",
 		})
 		return
 	}
 
+	// Count the total number of funds
+	var total int64
+	initializers.DB.Model(&models.Funds{}).Count(&total)
+
+	// Return the paginated response
 	c.JSON(200, gin.H{
-		"data": funds,
+		"data":       funds,
+		"total":      total,
+		"page":       pageInt,
+		"limit":      limitInt,
+		"totalPages": (total + int64(limitInt) - 1) / int64(limitInt), // Calculate total pages
 	})
 }
 
@@ -140,6 +174,29 @@ func UpdateFunds(c *gin.Context) {
 
 // GetFundsByUser gets all funds by user
 func GetFundsByUser(c *gin.Context) {
+	// Get query parameters for pagination
+	page := c.DefaultQuery("page", "1")
+	limit := c.DefaultQuery("limit", "10")
+
+	pageInt, err := strconv.Atoi(page)
+	if err != nil || pageInt < 1 {
+		c.JSON(400, gin.H{
+			"message": "Invalid page number",
+		})
+		return
+	}
+
+	limitInt, err := strconv.Atoi(limit)
+	if err != nil || limitInt < 1 {
+		c.JSON(400, gin.H{
+			"message": "Invalid limit number",
+		})
+		return
+	}
+
+	offset := (pageInt - 1) * limitInt
+
+	// Retrieve user ID from context
 	userId, exists := c.Get("user_id")
 	if !exists {
 		c.JSON(400, gin.H{
@@ -150,23 +207,32 @@ func GetFundsByUser(c *gin.Context) {
 	uid, ok := userId.(uint)
 	if !ok {
 		c.JSON(400, gin.H{
-			"message": "Invalid user id",
+			"message": "Invalid user ID",
 		})
+		return
 	}
 
+	// Retrieve paginated funds for the user
 	var funds []models.Funds
-
-	result := initializers.DB.Where("user_id = ?", uid).Find(&funds)
-
-	if result != nil {
+	result := initializers.DB.Where("user_id = ?", uid).Limit(limitInt).Offset(offset).Find(&funds)
+	if result.Error != nil {
 		c.JSON(400, gin.H{
 			"message": "Failed to get funds",
 		})
 		return
 	}
 
+	// Count the total number of funds for the user
+	var total int64
+	initializers.DB.Model(&models.Funds{}).Where("user_id = ?", uid).Count(&total)
+
+	// Return the paginated response
 	c.JSON(200, gin.H{
-		"data": funds,
+		"data":       funds,
+		"total":      total,
+		"page":       pageInt,
+		"limit":      limitInt,
+		"totalPages": (total + int64(limitInt) - 1) / int64(limitInt),
 	})
 }
 

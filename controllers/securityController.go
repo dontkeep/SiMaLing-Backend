@@ -2,6 +2,7 @@ package controllers
 
 import (
 	"fmt"
+	"strconv"
 
 	"github.com/dontkeep/simaling-backend/initializers"
 	"github.com/dontkeep/simaling-backend/models"
@@ -11,6 +12,7 @@ import (
 // if role is not admin, return 403
 // if role is admin, return all security record
 func GetAllSecurityRecord(c *gin.Context) {
+	// Check if the role is admin
 	role := c.MustGet("role").(string)
 	if role != "admin" {
 		c.JSON(403, gin.H{
@@ -18,30 +20,55 @@ func GetAllSecurityRecord(c *gin.Context) {
 		})
 		return
 	}
-	var securityRecord []models.SecurityRecord
-	initializers.DB.Find(&securityRecord)
-	c.JSON(200, securityRecord)
-}
 
-func DeleteSecurityRecord(c *gin.Context) {
-	role := c.MustGet("role").(string)
-	if role != "admin" {
-		c.JSON(403, gin.H{
-			"message": "Forbidden",
+	// Get query parameters for pagination
+	page := c.DefaultQuery("page", "1")
+	limit := c.DefaultQuery("limit", "10")
+
+	pageInt, err := strconv.Atoi(page)
+	if err != nil || pageInt < 1 {
+		c.JSON(400, gin.H{
+			"message": "Invalid page number",
 		})
 		return
 	}
-	id := c.Param("id")
-	var securityRecord models.SecurityRecord
-	initializers.DB.First(&securityRecord, id)
-	initializers.DB.Delete(&securityRecord)
+
+	limitInt, err := strconv.Atoi(limit)
+	if err != nil || limitInt < 1 {
+		c.JSON(400, gin.H{
+			"message": "Invalid limit number",
+		})
+		return
+	}
+
+	offset := (pageInt - 1) * limitInt
+
+	// Retrieve paginated security records
+	var securityRecords []models.SecurityRecord
+	result := initializers.DB.Limit(limitInt).Offset(offset).Find(&securityRecords)
+	if result.Error != nil {
+		c.JSON(400, gin.H{
+			"message": "Failed to get security records",
+		})
+		return
+	}
+
+	// Count the total number of security records
+	var total int64
+	initializers.DB.Model(&models.SecurityRecord{}).Count(&total)
+
+	// Return the paginated response
 	c.JSON(200, gin.H{
-		"message": "Security record deleted",
+		"data":       securityRecords,
+		"total":      total,
+		"page":       pageInt,
+		"limit":      limitInt,
+		"totalPages": (total + int64(limitInt) - 1) / int64(limitInt),
 	})
 }
 
 func GetSecurityRecordByNik(c *gin.Context) {
-	// receive token from context, get the user id from the token, and get the user nik from the user id, then get the security record by the nik, can be used by all roles
+	// Retrieve user ID from context
 	userID, exists := c.Get("user_id")
 	if !exists {
 		c.JSON(400, gin.H{
@@ -50,7 +77,6 @@ func GetSecurityRecordByNik(c *gin.Context) {
 		return
 	}
 
-	// Type assert userID to uint
 	uid, ok := userID.(uint)
 	if !ok {
 		c.JSON(400, gin.H{
@@ -68,19 +94,49 @@ func GetSecurityRecordByNik(c *gin.Context) {
 		return
 	}
 
-	// Retrieve security records by the user's NIK
+	// Get query parameters for pagination
+	page := c.DefaultQuery("page", "1")
+	limit := c.DefaultQuery("limit", "10")
+
+	pageInt, err := strconv.Atoi(page)
+	if err != nil || pageInt < 1 {
+		c.JSON(400, gin.H{
+			"message": "Invalid page number",
+		})
+		return
+	}
+
+	limitInt, err := strconv.Atoi(limit)
+	if err != nil || limitInt < 1 {
+		c.JSON(400, gin.H{
+			"message": "Invalid limit number",
+		})
+		return
+	}
+
+	offset := (pageInt - 1) * limitInt
+
+	// Retrieve paginated security records by the user's NIK
 	var securityRecords []models.SecurityRecord
-	if err := initializers.DB.Where("security_id = ?", user.ID).Find(&securityRecords).Error; err != nil {
+	result := initializers.DB.Where("security_id = ?", user.ID).Limit(limitInt).Offset(offset).Find(&securityRecords)
+	if result.Error != nil {
 		c.JSON(500, gin.H{
 			"message": "Failed to retrieve security records",
 		})
 		return
 	}
 
-	// Return the security records
+	// Count the total number of security records for the user
+	var total int64
+	initializers.DB.Model(&models.SecurityRecord{}).Where("security_id = ?", user.ID).Count(&total)
+
+	// Return the paginated response
 	c.JSON(200, gin.H{
-		"message": "Security records retrieved successfully",
-		"data":    securityRecords,
+		"data":       securityRecords,
+		"total":      total,
+		"page":       pageInt,
+		"limit":      limitInt,
+		"totalPages": (total + int64(limitInt) - 1) / int64(limitInt),
 	})
 }
 
