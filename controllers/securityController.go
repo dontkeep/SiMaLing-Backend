@@ -196,3 +196,40 @@ func CreateSecurityRecord(c *gin.Context) {
 		"data":    securityRecord,
 	})
 }
+
+func DeleteSecurityRecord(c *gin.Context) {
+	// Get the role from the context
+	role := c.MustGet("role").(string)
+	if role != "admin" {
+		c.JSON(403, gin.H{
+			"message": "Forbidden",
+		})
+		return
+	}
+
+	// Retrieve the security record ID from the URL
+	id := c.Param("id")
+
+	// Retrieve the security record by ID
+	var securityRecord models.SecurityRecord
+	result := initializers.DB.Where("id = ?", id).First(&securityRecord)
+	if result.Error != nil {
+		c.JSON(400, gin.H{
+			"message": "Failed to get security record",
+		})
+		return
+	}
+
+	// Delete the security record
+	result = initializers.DB.Delete(&securityRecord)
+	if result.Error != nil {
+		c.JSON(400, gin.H{
+			"message": "Failed to delete security record",
+		})
+		return
+	}
+
+	c.JSON(200, gin.H{
+		"message": "Security record deleted",
+	})
+}
