@@ -29,7 +29,7 @@ func main() {
 
 	authorized := r.Group("/api")
 
-	authorized.Use(controllers.Authenticate)
+	authorized.Use(controllers.ExtractTokenMiddleware, controllers.Authenticate)
 	{
 		// User management
 		authorized.GET("/users", controllers.GetAllUsers)

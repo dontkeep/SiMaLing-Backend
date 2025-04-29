@@ -1,33 +1,46 @@
 package controllers
 
 import (
+	"fmt"
 	"strconv"
 
 	"github.com/dontkeep/simaling-backend/initializers"
 	"github.com/dontkeep/simaling-backend/models"
 	"github.com/gin-gonic/gin"
+	"golang.org/x/crypto/bcrypt"
 )
 
 func CreateAdminAccount() error {
-	var user models.User
-	initializers.DB.Where("role_id = ?", 1).First(&user)
-
-	if user.ID != 0 {
-		return nil
+	// Check if the role exists
+	var role models.Roles
+	if err := initializers.DB.Where("id = ?", 1).First(&role).Error; err != nil {
+		return fmt.Errorf("role not found: %v", err)
 	}
 
-	// modify this to your own admin account
+	// Check if an admin user already exists
+	var user models.User
+	initializers.DB.Where("role_id = ?", 1).First(&user)
+	if user.ID != 0 {
+		return nil // Admin account already exists
+	}
+
+	// Hash the password
+	hashedPassword, err := bcrypt.GenerateFromPassword([]byte("password"), bcrypt.DefaultCost)
+	if err != nil {
+		return fmt.Errorf("failed to hash password: %v", err)
+	}
+
+	// Create the admin account
 	user = models.User{
 		Phone_No: "081234567890",
 		NIK:      "1234567890123456",
-		Password: "password",
+		Password: string(hashedPassword),
 		Name:     "Admin",
 		Address:  "Jl. Admin",
-		Role_Id:  1,
+		Role_Id:  role.ID, // Use the Role ID from the Roles table
 	}
 
 	result := initializers.DB.Create(&user)
-
 	if result.Error != nil {
 		return result.Error
 	}
@@ -60,9 +73,18 @@ func GetAllUsers(c *gin.Context) {
 	// Calculate the offset
 	offset := (pageInt - 1) * limitInt
 
+	type UserResponse struct {
+		ID       uint   `json:"id"`
+		Phone_No string `json:"phone_no"`
+		NIK      string `json:"nik"`
+		Name     string `json:"name"`
+		Address  string `json:"address"`
+		Role_Id  uint   `json:"role_id"`
+	}
+
 	// Retrieve paginated users from the database
-	var users []models.User
-	result := initializers.DB.Limit(limitInt).Offset(offset).Find(&users)
+	var users []UserResponse
+	result := initializers.DB.Model(&models.User{}).Select("id, phone_no, nik, name, address, role_id").Limit(limitInt).Offset(offset).Scan(&users)
 	if result.Error != nil {
 		c.JSON(400, gin.H{
 			"message": "Failed to get users",

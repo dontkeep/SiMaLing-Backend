@@ -1,6 +1,8 @@
 package controllers
 
 import (
+	"time"
+
 	"github.com/dontkeep/simaling-backend/initializers"
 	"github.com/dontkeep/simaling-backend/models"
 	"github.com/gin-gonic/gin"
@@ -46,8 +48,14 @@ func Login(c *gin.Context) {
 		return
 	}
 
+	expirationTime := time.Now().Add(24 * time.Hour)
+
 	claims := &Claims{
 		UserID: user.ID,
+		RegisteredClaims: jwt.RegisteredClaims{
+			IssuedAt:  jwt.NewNumericDate(time.Now()),
+			ExpiresAt: jwt.NewNumericDate(expirationTime),
+		},
 	}
 
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
@@ -67,23 +75,33 @@ func Login(c *gin.Context) {
 
 func Logout(c *gin.Context) {
 	// Invalidate token
-	tokenString := c.GetHeader("Authorization")
-	if tokenString == "" {
+	tokenString, exists := c.Get("token")
+	if !exists || tokenString == "" {
 		c.JSON(400, gin.H{
 			"message": "Token not found",
 		})
 		return
 	}
 
-	if err := blacklistToken(tokenString); err != nil {
+	if err := blacklistToken(tokenString.(string)); err != nil {
 		c.JSON(500, gin.H{
 			"message": "Failed to blacklist token",
 		})
 		return
 	}
+
 	c.JSON(200, gin.H{
 		"message": "Logout success",
 	})
+}
+
+func ExtractTokenMiddleware(c *gin.Context) {
+	tokenString := c.GetHeader("Authorization")
+	if len(tokenString) > 7 && tokenString[:7] == "Bearer" {
+		tokenString = tokenString[7:]
+	}
+	c.Set("token", tokenString)
+	c.Next()
 }
 
 func Authenticate(c *gin.Context) {
@@ -97,9 +115,9 @@ func Authenticate(c *gin.Context) {
 
 	var blacklistToken models.BlacklistToken
 	if err := initializers.DB.Where("token = ?", tokenString).First(&blacklistToken).Error; err == nil {
-		c.JSON(401, gin.H{
-			"message": "Token has been blacklisted",
-		})
+		c.Set("is_blacklisted", true)
+		c.Set("token_string", tokenString)
+		c.Next()
 		return
 	}
 
@@ -109,13 +127,14 @@ func Authenticate(c *gin.Context) {
 	})
 
 	if err != nil || !token.Valid {
-		c.JSON(401, gin.H{
-			"message": "Invalid token",
-		})
+		c.Set("is_invalid", true)
+		c.Set("token_string", tokenString)
+		c.Next()
 		return
 	}
 
 	c.Set("user_id", claims.UserID)
+	c.Set("token_string", tokenString)
 	c.Next()
 }
 
