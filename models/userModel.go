@@ -6,7 +6,7 @@ type User struct {
 	gorm.Model
 	ID       uint   `gorm:"primaryKey"`
 	Phone_No string `gorm:"unique"`
-	NIK      string `gorm:"unique"`
+	Email    string `gorm:"unique"`
 	Password string
 	Name     string
 	Address  string

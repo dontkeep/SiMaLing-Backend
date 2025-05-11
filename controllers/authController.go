@@ -13,7 +13,7 @@ import (
 var jwtKey = []byte("86a044962f2416da2c15ebc88f2c9f828dc64f897c86720615a66a48cea37de5")
 
 type Credentials struct {
-	NIK      string `json:"nik"`
+	Phone_No string `json:"phone_no"`
 	Password string `json:"password"`
 }
 
@@ -34,7 +34,7 @@ func Login(c *gin.Context) {
 
 	var user models.User
 
-	if err := initializers.DB.Where("nik = ?", creds.NIK).First(&user).Error; err != nil {
+	if err := initializers.DB.Where("phone_no = ?", creds.Phone_No).First(&user).Error; err != nil {
 		c.JSON(400, gin.H{
 			"message": "User not found",
 		})

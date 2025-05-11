@@ -1,7 +1,10 @@
 package controllers
 
 import (
+	"os"
+	"path/filepath"
 	"strconv"
+	"time"
 
 	"github.com/dontkeep/simaling-backend/initializers"
 	"github.com/dontkeep/simaling-backend/models"
@@ -60,19 +63,39 @@ func GetFunds(c *gin.Context) {
 
 // CreateFunds creates a new funds
 func CreateFunds(c *gin.Context) {
-	var body struct {
-		Amount      int
-		Is_Income   bool
-		Description string
+	// Parse form data
+	amount := c.PostForm("amount")
+	description := c.PostForm("description")
+	isIncome := c.PostForm("is_income")
+	status := c.PostForm("status")
+
+	// Parse the uploaded file
+	file, err := c.FormFile("image")
+	var filePath string
+	if err == nil {
+		// Save the file to the uploads directory
+		uploadsDir := "uploads"
+		if _, err := os.Stat(uploadsDir); os.IsNotExist(err) {
+			os.Mkdir(uploadsDir, os.ModePerm)
+		}
+
+		// Generate a unique file name
+		fileName := strconv.FormatInt(time.Now().UnixNano(), 10) + filepath.Ext(file.Filename)
+		filePath = filepath.Join(uploadsDir, fileName)
+
+		if err := c.SaveUploadedFile(file, filePath); err != nil {
+			c.JSON(500, gin.H{
+				"message": "Failed to save image",
+			})
+			return
+		}
 	}
 
-	if err := c.BindJSON(&body); err != nil {
-		c.JSON(400, gin.H{
-			"message": "Invalid request",
-		})
-		return
-	}
+	// Convert form data to appropriate types
+	amountFloat, _ := strconv.ParseFloat(amount, 64)
+	isIncomeBool := isIncome == "true"
 
+	// Retrieve user ID from context
 	userId, exists := c.Get("user_id")
 	if !exists {
 		c.JSON(400, gin.H{
@@ -83,28 +106,31 @@ func CreateFunds(c *gin.Context) {
 	uid, ok := userId.(uint)
 	if !ok {
 		c.JSON(400, gin.H{
-			"message": "Invalid user id",
+			"message": "Invalid user ID",
 		})
+		return
 	}
 
+	// Create the Funds record
 	funds := models.Funds{
 		User_Id:     uid,
-		Amount:      float64(body.Amount),
-		Is_Income:   body.Is_Income,
-		Description: body.Description,
-		Status:      "Pending",
+		Amount:      amountFloat,
+		Image:       filePath,
+		Description: description,
+		Is_Income:   isIncomeBool,
+		Status:      status,
 	}
 
-	result := initializers.DB.Create(&funds)
-	if result.Error != nil {
-		c.JSON(400, gin.H{
-			"message": "Failed to create funds",
+	// Save the record to the database
+	if err := initializers.DB.Create(&funds).Error; err != nil {
+		c.JSON(500, gin.H{
+			"message": "Failed to create funds record",
 		})
 		return
 	}
 
 	c.JSON(200, gin.H{
-		"message": "Funds created",
+		"message": "Funds record created successfully",
 		"data":    funds,
 	})
 }

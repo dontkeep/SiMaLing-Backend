@@ -67,7 +67,7 @@ func GetAllSecurityRecord(c *gin.Context) {
 	})
 }
 
-func GetSecurityRecordByNik(c *gin.Context) {
+func GetSecurityRecordByPhoneNum(c *gin.Context) {
 	// Retrieve user ID from context
 	userID, exists := c.Get("user_id")
 	if !exists {
@@ -156,7 +156,7 @@ func CreateSecurityRecord(c *gin.Context) {
 		UserID    uint    `json:"user_id"`
 		Longitude float64 `json:"longitude"`
 		Latitude  float64 `json:"latitude"`
-		NIK       string  `json:"nik"`
+		Phone_No  string  `json:"phone_no"`
 		Note      string  `json:"note"`
 	}
 
@@ -169,9 +169,9 @@ func CreateSecurityRecord(c *gin.Context) {
 
 	// Verify if a user with the provided NIK exists
 	var user models.User
-	if err := initializers.DB.Where("nik = ?", body.NIK).First(&user).Error; err != nil {
+	if err := initializers.DB.Where("phone_no = ?", body.Phone_No).First(&user).Error; err != nil {
 		c.JSON(400, gin.H{
-			"message": "No user found with the provided NIK",
+			"message": "No user found with the provided Phone Number",
 		})
 		return
 	}
@@ -179,6 +179,7 @@ func CreateSecurityRecord(c *gin.Context) {
 	// Create the security record
 	securityRecord := models.SecurityRecord{
 		Security_Id: body.UserID,
+		Phone_No:    body.Phone_No,
 		Longitude:   fmt.Sprintf("%f", body.Longitude),
 		Latitude:    fmt.Sprintf("%f", body.Latitude),
 	}

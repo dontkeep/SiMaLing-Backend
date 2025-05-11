@@ -33,7 +33,7 @@ func CreateAdminAccount() error {
 	// Create the admin account
 	user = models.User{
 		Phone_No: "081234567890",
-		NIK:      "1234567890123456",
+		Email:    "example@gamil.com",
 		Password: string(hashedPassword),
 		Name:     "Admin",
 		Address:  "Jl. Admin",
@@ -126,13 +126,12 @@ func GetUser(c *gin.Context) {
 func CreateUser(c *gin.Context) {
 	var body struct {
 		Phone_No      string
-		NIK           string
+		Email         string
 		Password      string
 		Name          string
 		Address       string
 		Role_Id       uint
 		FamilyMembers []struct {
-			NIK    string `json:"nik"`
 			Name   string `json:"name"`
 			Status string `json:"status"` // "wife" or "child"
 		} `json:"family_members"`
@@ -149,7 +148,7 @@ func CreateUser(c *gin.Context) {
 	// Create the user
 	user := models.User{
 		Phone_No: body.Phone_No,
-		NIK:      body.NIK,
+		Email:    body.Email,
 		Password: body.Password,
 		Name:     body.Name,
 		Address:  body.Address,
@@ -169,7 +168,6 @@ func CreateUser(c *gin.Context) {
 		var familyMembers []models.FamilyMembers
 		for _, fm := range body.FamilyMembers {
 			familyMembers = append(familyMembers, models.FamilyMembers{
-				NIK:             fm.NIK,
 				Name:            fm.Name,
 				Status:          fm.Status,
 				HeadOfFamily_Id: user.ID,
@@ -207,14 +205,13 @@ func UpdateUser(c *gin.Context) {
 	// Parse the request body
 	var body struct {
 		Phone_No      string
-		NIK           string
+		Email         string
 		Password      string
 		Name          string
 		Address       string
 		Role_Id       uint
 		FamilyMembers []struct {
 			ID     uint   `json:"id"` // Include ID to identify existing family members
-			NIK    string `json:"nik"`
 			Name   string `json:"name"`
 			Status string `json:"status"` // "wife" or "child"
 		} `json:"family_members"`
@@ -229,7 +226,7 @@ func UpdateUser(c *gin.Context) {
 
 	// Update the user fields
 	user.Phone_No = body.Phone_No
-	user.NIK = body.NIK
+	user.Email = body.Email
 	user.Password = body.Password
 	user.Name = body.Name
 	user.Address = body.Address
@@ -263,7 +260,6 @@ func UpdateUser(c *gin.Context) {
 		if fm.ID == 0 {
 			// Add new family member
 			newFamilyMember := models.FamilyMembers{
-				NIK:             fm.NIK,
 				Name:            fm.Name,
 				Status:          fm.Status,
 				HeadOfFamily_Id: user.ID,
@@ -272,7 +268,6 @@ func UpdateUser(c *gin.Context) {
 		} else {
 			// Update existing family member
 			if existingFamily, exists := existingFamilyMap[fm.ID]; exists {
-				existingFamily.NIK = fm.NIK
 				existingFamily.Name = fm.Name
 				existingFamily.Status = fm.Status
 				initializers.DB.Save(&existingFamily)
