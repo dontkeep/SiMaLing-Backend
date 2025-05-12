@@ -20,7 +20,7 @@ jobs:
     - name: Set up Go
       uses: actions/setup-go@v4
       with:
-        go-version: '1.21'
+        go-version: '1.24'
         
     - name: Verify dependencies
       run: go mod verify
@@ -64,5 +64,5 @@ jobs:
           docker pull loyalty59/simling:latest
           docker stop simling || true
           docker rm simling || true
-          docker run -d --name go-cicd -p 3001:3000 --restart always loyalty59/simling:latest
+          docker run -d --name simling -p 3001:3000 --restart always loyalty59/simling:latest
           docker image prune -f
