@@ -11,6 +11,11 @@ import (
 
 // if role is not admin, return 403
 // if role is admin, return all security record
+
+func GetScurityRecordToday(c *gin.Context) {
+	// function
+}
+
 func GetAllSecurityRecord(c *gin.Context) {
 	// Check if the role is admin
 	role := c.MustGet("role").(string)
