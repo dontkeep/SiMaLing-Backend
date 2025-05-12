@@ -27,7 +27,7 @@ COPY --from=builder /app/main .
 COPY --from=builder /app/.env.prod .env
 
 # Expose port 8080
-EXPOSE 3000
+EXPOSE 3004
 
 # Run the binary
 CMD ["./main"]

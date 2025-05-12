@@ -64,5 +64,5 @@ jobs:
           docker pull loyalty59/simling:latest
           docker stop simling || true
           docker rm simling || true
-          docker run -d --name simling -p 3001:3000 --restart always loyalty59/simling:latest
+          docker run -d --name simling -p 3004:3004 --restart always loyalty59/simling:latest
           docker image prune -f
