@@ -50,6 +50,7 @@ func main() {
 		authorized.DELETE("/funds/:id", controllers.DeleteFunds)
 		authorized.PUT("/funds/:id/accept", controllers.AcceptFunds)
 		authorized.PUT("/funds/:id/reject", controllers.RejectFunds)
+		authorized.GET("/funds-by-month-year", controllers.GetFundsByMonthAndYear)
 
 		// Security records management
 		authorized.GET("/security-records", controllers.GetAllSecurityRecord)            // Admin-only

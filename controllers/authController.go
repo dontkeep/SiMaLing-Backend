@@ -84,7 +84,13 @@ func Logout(c *gin.Context) {
 		return
 	}
 
-	if err := blacklistToken(tokenString.(string)); err != nil {
+	// Remove Bearer prefix before blacklisting
+	rawToken := tokenString.(string)
+	if len(rawToken) > 7 && rawToken[:7] == "Bearer " {
+		rawToken = rawToken[7:]
+	}
+
+	if err := blacklistToken(rawToken); err != nil {
 		c.JSON(500, gin.H{
 			"message": "Failed to blacklist token",
 		})
@@ -114,17 +120,23 @@ func Authenticate(c *gin.Context) {
 		c.Abort()
 		return
 	}
-
-	// Do NOT remove Bearer prefix, check as-is
+	print("Token String: ", tokenString)
+	rawToken := tokenString
+	if len(tokenString) > 7 && tokenString[:7] == "Bearer " {
+		rawToken = tokenString[7:]
+	}
+	// Check blacklist with full header (with Bearer)
 	var blacklistToken models.BlacklistToken
-	if err := initializers.DB.Where("token = ?", tokenString).First(&blacklistToken).Error; err == nil {
+	if err := initializers.DB.Where("token = ?", rawToken).First(&blacklistToken).Error; err == nil {
 		c.JSON(401, gin.H{"message": "Token is blacklisted"})
 		c.Abort()
 		return
 	}
 
+	// Remove Bearer prefix for JWT parsing
+
 	claims := &Claims{}
-	token, err := jwt.ParseWithClaims(tokenString, claims, func(token *jwt.Token) (interface{}, error) {
+	token, err := jwt.ParseWithClaims(rawToken, claims, func(token *jwt.Token) (interface{}, error) {
 		return jwtKey, nil
 	})
 

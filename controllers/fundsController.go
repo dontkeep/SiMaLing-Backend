@@ -523,3 +523,66 @@ func RejectFunds(c *gin.Context) {
 		"data":    response,
 	})
 }
+
+// GetFundsByMonthAndYear gets all funds for the authenticated user for a specific month and year
+func GetFundsByMonthAndYear(c *gin.Context) {
+	monthStr := c.Query("month") // 1-12
+	yearStr := c.Query("year")   // e.g. 2025
+
+	if monthStr == "" || yearStr == "" {
+		c.JSON(400, gin.H{"message": "Month and year query parameters are required"})
+		return
+	}
+
+	month, err := strconv.Atoi(monthStr)
+	if err != nil || month < 1 || month > 12 {
+		c.JSON(400, gin.H{"message": "Invalid month"})
+		return
+	}
+	year, err := strconv.Atoi(yearStr)
+	if err != nil || year < 1 {
+		c.JSON(400, gin.H{"message": "Invalid year"})
+		return
+	}
+
+	// Get user ID from context
+	userId, exists := c.Get("user_id")
+	if !exists {
+		c.JSON(400, gin.H{"message": "User not authenticated"})
+		return
+	}
+	uid, ok := userId.(uint)
+	if !ok {
+		c.JSON(400, gin.H{"message": "Invalid user ID"})
+		return
+	}
+
+	// Calculate start and end of the month
+	startTime := time.Date(year, time.Month(month), 1, 0, 0, 0, 0, time.Local)
+	endTime := startTime.AddDate(0, 1, 0)
+
+	type FundsResponse struct {
+		ID          uint      `json:"id"`
+		Amount      float64   `json:"amount"`
+		Image       string    `json:"image"`
+		Description string    `json:"description"`
+		Is_Income   bool      `json:"is_income"`
+		Status      string    `json:"status"`
+		CreatedAt   time.Time `json:"created_at"`
+		UserName    string    `json:"user_name"`
+		Block       string    `json:"block"`
+	}
+
+	var funds []FundsResponse
+	result := initializers.DB.Model(&models.Funds{}).
+		Select("funds.id, funds.amount, funds.image, funds.description, funds.is_income, funds.status, funds.created_at, users.name as user_name, funds.block").
+		Joins("left join users on users.id = funds.user_id").
+		Where("funds.user_id = ? AND funds.created_at >= ? AND funds.created_at < ?", uid, startTime, endTime).
+		Scan(&funds)
+	if result.Error != nil {
+		c.JSON(400, gin.H{"message": "Failed to get funds for the specified month and year"})
+		return
+	}
+
+	c.JSON(200, gin.H{"data": funds})
+}
