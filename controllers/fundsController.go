@@ -13,28 +13,37 @@ import (
 
 func GetIncomeFunds(c *gin.Context) {
 	// Get query parameters for pagination
-	page := c.DefaultQuery("page", "1")    // Default to page 1 if not provided
-	limit := c.DefaultQuery("limit", "10") // Default to 10 records per page if not provided
+	page := c.DefaultQuery("page", "1")
+	limit := c.DefaultQuery("limit", "10")
 
-	// Convert query parameters to integers
 	pageInt, err := strconv.Atoi(page)
 	if err != nil || pageInt < 1 {
-		c.JSON(400, gin.H{
-			"message": "Invalid page number",
-		})
+		c.JSON(400, gin.H{"message": "Invalid page number"})
 		return
 	}
 
 	limitInt, err := strconv.Atoi(limit)
 	if err != nil || limitInt < 1 {
-		c.JSON(400, gin.H{
-			"message": "Invalid limit number",
-		})
+		c.JSON(400, gin.H{"message": "Invalid limit number"})
 		return
 	}
 
-	// Calculate the offset
 	offset := (pageInt - 1) * limitInt
+
+	// Month/year filter
+	monthStr := c.Query("month")
+	yearStr := c.Query("year")
+	var startTime, endTime time.Time
+	useDateFilter := false
+	if monthStr != "" && yearStr != "" {
+		month, err1 := strconv.Atoi(monthStr)
+		year, err2 := strconv.Atoi(yearStr)
+		if err1 == nil && err2 == nil && month >= 1 && month <= 12 && year > 0 {
+			startTime = time.Date(year, time.Month(month), 1, 0, 0, 0, 0, time.Local)
+			endTime = startTime.AddDate(0, 1, 0)
+			useDateFilter = true
+		}
+	}
 
 	type FundsResponse struct {
 		ID        uint      `json:"id"`
@@ -48,55 +57,69 @@ func GetIncomeFunds(c *gin.Context) {
 	}
 
 	var funds []FundsResponse
-	result := initializers.DB.Model(&models.Funds{}).
+	db := initializers.DB.Model(&models.Funds{}).
 		Select("funds.id, funds.is_income, funds.status, funds.amount, funds.block, users.name as user_name, funds.image, funds.created_at").
 		Joins("left join users on users.id = funds.user_id").
-		Where("funds.is_income = ?", true).
-		Limit(limitInt).Offset(offset).
-		Scan(&funds)
+		Where("funds.is_income = ?", true)
+	if useDateFilter {
+		db = db.Where("funds.created_at >= ? AND funds.created_at < ?", startTime, endTime)
+	}
+	db = db.Limit(limitInt).Offset(offset)
+	result := db.Scan(&funds)
 	if result.Error != nil {
-		c.JSON(400, gin.H{
-			"message": "Failed to get income funds",
-		})
+		c.JSON(400, gin.H{"message": "Failed to get income funds"})
 		return
 	}
 
 	var total int64
-	initializers.DB.Model(&models.Funds{}).Where("is_income = ?", true).Count(&total)
+	totalDB := initializers.DB.Model(&models.Funds{}).Where("is_income = ?", true)
+	if useDateFilter {
+		totalDB = totalDB.Where("created_at >= ? AND created_at < ?", startTime, endTime)
+	}
+	totalDB.Count(&total)
 
 	c.JSON(200, gin.H{
 		"data":       funds,
 		"total":      total,
 		"page":       pageInt,
 		"limit":      limitInt,
-		"totalPages": (total + int64(limitInt) - 1) / int64(limitInt), // Calculate total pages
+		"totalPages": (total + int64(limitInt) - 1) / int64(limitInt),
 	})
 }
 
 func GetExpenseFunds(c *gin.Context) {
 	// Get query parameters for pagination
-	page := c.DefaultQuery("page", "1")    // Default to page 1 if not provided
-	limit := c.DefaultQuery("limit", "10") // Default to 10 records per page if not provided
+	page := c.DefaultQuery("page", "1")
+	limit := c.DefaultQuery("limit", "10")
 
-	// Convert query parameters to integers
 	pageInt, err := strconv.Atoi(page)
 	if err != nil || pageInt < 1 {
-		c.JSON(400, gin.H{
-			"message": "Invalid page number",
-		})
+		c.JSON(400, gin.H{"message": "Invalid page number"})
 		return
 	}
 
 	limitInt, err := strconv.Atoi(limit)
 	if err != nil || limitInt < 1 {
-		c.JSON(400, gin.H{
-			"message": "Invalid limit number",
-		})
+		c.JSON(400, gin.H{"message": "Invalid limit number"})
 		return
 	}
 
-	// Calculate the offset
 	offset := (pageInt - 1) * limitInt
+
+	// Month/year filter
+	monthStr := c.Query("month")
+	yearStr := c.Query("year")
+	var startTime, endTime time.Time
+	useDateFilter := false
+	if monthStr != "" && yearStr != "" {
+		month, err1 := strconv.Atoi(monthStr)
+		year, err2 := strconv.Atoi(yearStr)
+		if err1 == nil && err2 == nil && month >= 1 && month <= 12 && year > 0 {
+			startTime = time.Date(year, time.Month(month), 1, 0, 0, 0, 0, time.Local)
+			endTime = startTime.AddDate(0, 1, 0)
+			useDateFilter = true
+		}
+	}
 
 	type FundsResponse struct {
 		ID        uint      `json:"id"`
@@ -110,28 +133,33 @@ func GetExpenseFunds(c *gin.Context) {
 	}
 
 	var funds []FundsResponse
-	result := initializers.DB.Model(&models.Funds{}).
+	db := initializers.DB.Model(&models.Funds{}).
 		Select("funds.id, funds.is_income, funds.status, funds.amount, funds.block, users.name as user_name, funds.image, funds.created_at").
 		Joins("left join users on users.id = funds.user_id").
-		Where("funds.is_income = ?", false).
-		Limit(limitInt).Offset(offset).
-		Scan(&funds)
+		Where("funds.is_income = ?", false)
+	if useDateFilter {
+		db = db.Where("funds.created_at >= ? AND funds.created_at < ?", startTime, endTime)
+	}
+	db = db.Limit(limitInt).Offset(offset)
+	result := db.Scan(&funds)
 	if result.Error != nil {
-		c.JSON(400, gin.H{
-			"message": "Failed to get expense funds",
-		})
+		c.JSON(400, gin.H{"message": "Failed to get expense funds"})
 		return
 	}
 
 	var total int64
-	initializers.DB.Model(&models.Funds{}).Where("is_income = ?", false).Count(&total)
+	totalDB := initializers.DB.Model(&models.Funds{}).Where("is_income = ?", false)
+	if useDateFilter {
+		totalDB = totalDB.Where("created_at >= ? AND created_at < ?", startTime, endTime)
+	}
+	totalDB.Count(&total)
 
 	c.JSON(200, gin.H{
 		"data":       funds,
 		"total":      total,
 		"page":       pageInt,
 		"limit":      limitInt,
-		"totalPages": (total + int64(limitInt) - 1) / int64(limitInt), // Calculate total pages
+		"totalPages": (total + int64(limitInt) - 1) / int64(limitInt),
 	})
 }
 
@@ -161,6 +189,22 @@ func GetFunds(c *gin.Context) {
 	// Calculate the offset
 	offset := (pageInt - 1) * limitInt
 
+	// Month/year filter
+	monthStr := c.Query("month") // 1-12
+	yearStr := c.Query("year")   // e.g. 2025
+
+	var startTime, endTime time.Time
+	useDateFilter := false
+	if monthStr != "" && yearStr != "" {
+		month, err1 := strconv.Atoi(monthStr)
+		year, err2 := strconv.Atoi(yearStr)
+		if err1 == nil && err2 == nil && month >= 1 && month <= 12 && year > 0 {
+			startTime = time.Date(year, time.Month(month), 1, 0, 0, 0, 0, time.Local)
+			endTime = startTime.AddDate(0, 1, 0)
+			useDateFilter = true
+		}
+	}
+
 	// Retrieve paginated funds from the database with selected fields and join user name
 	type FundsResponse struct {
 		ID        uint      `json:"id"`
@@ -174,11 +218,14 @@ func GetFunds(c *gin.Context) {
 	}
 
 	var funds []FundsResponse
-	result := initializers.DB.Model(&models.Funds{}).
+	db := initializers.DB.Model(&models.Funds{}).
 		Select("funds.id, funds.is_income, funds.status, funds.amount, funds.block, users.name as user_name, funds.created_at").
-		Joins("left join users on users.id = funds.user_id").
-		Limit(limitInt).Offset(offset).
-		Scan(&funds)
+		Joins("left join users on users.id = funds.user_id")
+	if useDateFilter {
+		db = db.Where("funds.created_at >= ? AND funds.created_at < ?", startTime, endTime)
+	}
+	db = db.Limit(limitInt).Offset(offset)
+	result := db.Scan(&funds)
 	if result.Error != nil {
 		c.JSON(400, gin.H{
 			"message": "Failed to get funds",
@@ -188,7 +235,11 @@ func GetFunds(c *gin.Context) {
 
 	// Count the total number of funds
 	var total int64
-	initializers.DB.Model(&models.Funds{}).Count(&total)
+	totalDB := initializers.DB.Model(&models.Funds{})
+	if useDateFilter {
+		totalDB = totalDB.Where("created_at >= ? AND created_at < ?", startTime, endTime)
+	}
+	totalDB.Count(&total)
 
 	// Return the paginated response
 	c.JSON(200, gin.H{
@@ -423,6 +474,22 @@ func GetFundsByUser(c *gin.Context) {
 
 	offset := (pageInt - 1) * limitInt
 
+	// Month/year filter
+	monthStr := c.Query("month") // 1-12
+	yearStr := c.Query("year")   // e.g. 2025
+
+	var startTime, endTime time.Time
+	useDateFilter := false
+	if monthStr != "" && yearStr != "" {
+		month, err1 := strconv.Atoi(monthStr)
+		year, err2 := strconv.Atoi(yearStr)
+		if err1 == nil && err2 == nil && month >= 1 && month <= 12 && year > 0 {
+			startTime = time.Date(year, time.Month(month), 1, 0, 0, 0, 0, time.Local)
+			endTime = startTime.AddDate(0, 1, 0)
+			useDateFilter = true
+		}
+	}
+
 	// Retrieve user ID from context
 	userId, exists := c.Get("user_id")
 	if !exists {
@@ -452,12 +519,15 @@ func GetFundsByUser(c *gin.Context) {
 	}
 
 	var funds []FundsResponse
-	result := initializers.DB.Model(&models.Funds{}).
+	db := initializers.DB.Model(&models.Funds{}).
 		Select("funds.id, funds.amount, funds.image, funds.description, funds.is_income, funds.status, funds.created_at, users.name as user_name, funds.block").
 		Joins("left join users on users.id = funds.user_id").
-		Where("funds.user_id = ?", uid).
-		Limit(limitInt).Offset(offset).
-		Scan(&funds)
+		Where("funds.user_id = ?", uid)
+	if useDateFilter {
+		db = db.Where("funds.created_at >= ? AND funds.created_at < ?", startTime, endTime)
+	}
+	db = db.Limit(limitInt).Offset(offset)
+	result := db.Scan(&funds)
 	if result.Error != nil {
 		c.JSON(400, gin.H{
 			"message": "Failed to get funds",
@@ -467,7 +537,11 @@ func GetFundsByUser(c *gin.Context) {
 
 	// Count the total number of funds for the user
 	var total int64
-	initializers.DB.Model(&models.Funds{}).Where("user_id = ?", uid).Count(&total)
+	totalDB := initializers.DB.Model(&models.Funds{}).Where("user_id = ?", uid)
+	if useDateFilter {
+		totalDB = totalDB.Where("created_at >= ? AND created_at < ?", startTime, endTime)
+	}
+	totalDB.Count(&total)
 
 	// Return the paginated response
 	c.JSON(200, gin.H{
