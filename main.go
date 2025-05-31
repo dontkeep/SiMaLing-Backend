@@ -62,6 +62,7 @@ func main() {
 
 		// Logout
 		authorized.POST("/logout", controllers.Logout)
+		authorized.GET("/home", controllers.GetHomeData)
 	}
 
 	r.Run()

@@ -3,6 +3,7 @@ package controllers
 import (
 	"fmt"
 	"strconv"
+	"time"
 
 	"github.com/dontkeep/simaling-backend/initializers"
 	"github.com/dontkeep/simaling-backend/models"
@@ -121,6 +122,48 @@ func GetUser(c *gin.Context) {
 	c.JSON(200, gin.H{
 		"data": user,
 	})
+}
+
+func getHomeData(c *gin.Context) {
+	// Get total users
+	var totalUsers int64
+	initializers.DB.Model(&models.User{}).Count(&totalUsers)
+
+	// Get month and year from query, default to current month/year
+	month := time.Now().Month()
+	year := time.Now().Year()
+	if m := c.Query("month"); m != "" {
+		if mi, err := strconv.Atoi(m); err == nil && mi >= 1 && mi <= 12 {
+			month = time.Month(mi)
+		}
+	}
+	if y := c.Query("year"); y != "" {
+		if yi, err := strconv.Atoi(y); err == nil && yi > 0 {
+			year = yi
+		}
+	}
+
+	// Calculate start and end of the month
+	startTime := time.Date(year, month, 1, 0, 0, 0, 0, time.Local)
+	endTime := startTime.AddDate(0, 1, 0)
+
+	// Get total users added in the month
+	var usersAddedThisMonth int64
+	initializers.DB.Model(&models.User{}).
+		Where("created_at >= ? AND created_at < ?", startTime, endTime).
+		Count(&usersAddedThisMonth)
+
+	c.JSON(200, gin.H{
+		"total_users":            totalUsers,
+		"users_added_this_month": usersAddedThisMonth,
+		"month":                  int(month),
+		"year":                   year,
+	})
+}
+
+// Exported version of getHomeData for routing
+func GetHomeData(c *gin.Context) {
+	getHomeData(c)
 }
 
 func isAdmin(c *gin.Context) bool {
