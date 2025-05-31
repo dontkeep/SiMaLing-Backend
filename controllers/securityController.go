@@ -110,6 +110,21 @@ func GetAllSecurityRecord(c *gin.Context) {
 
 	offset := (pageInt - 1) * limitInt
 
+	// Month/year filter
+	monthStr := c.Query("month")
+	yearStr := c.Query("year")
+	var startTime, endTime time.Time
+	useDateFilter := false
+	if monthStr != "" && yearStr != "" {
+		month, err1 := strconv.Atoi(monthStr)
+		year, err2 := strconv.Atoi(yearStr)
+		if err1 == nil && err2 == nil && month >= 1 && month <= 12 && year > 0 {
+			startTime = time.Date(year, time.Month(month), 1, 0, 0, 0, 0, time.Local)
+			endTime = startTime.AddDate(0, 1, 0)
+			useDateFilter = true
+		}
+	}
+
 	type SecurityRecordResponse struct {
 		ID           uint   `json:"id"`
 		SecurityId   uint   `json:"security_id"`
@@ -121,23 +136,27 @@ func GetAllSecurityRecord(c *gin.Context) {
 	}
 
 	var records []SecurityRecordResponse
-	result := initializers.DB.Model(&models.SecurityRecord{}).
+	db := initializers.DB.Model(&models.SecurityRecord{}).
 		Select("security_records.id, security_records.security_id, users.name as security_name, security_records.block, security_records.phone_no, security_records.longitude, security_records.latitude").
-		Joins("left join users on users.id = security_records.security_id").
-		Limit(limitInt).Offset(offset).
-		Scan(&records)
+		Joins("left join users on users.id = security_records.security_id")
+	if useDateFilter {
+		db = db.Where("security_records.created_at >= ? AND security_records.created_at < ?", startTime, endTime)
+	}
+	db = db.Limit(limitInt).Offset(offset)
+	result := db.Scan(&records)
 	if result.Error != nil {
-		c.JSON(400, gin.H{
-			"message": "Failed to get security records",
-		})
+		c.JSON(400, gin.H{"message": "Failed to get security records"})
 		return
 	}
 
-	// Count the total number of security records
+	// Count the total number of security records (with filter if applied)
 	var total int64
-	initializers.DB.Model(&models.SecurityRecord{}).Count(&total)
+	totalDB := initializers.DB.Model(&models.SecurityRecord{})
+	if useDateFilter {
+		totalDB = totalDB.Where("created_at >= ? AND created_at < ?", startTime, endTime)
+	}
+	totalDB.Count(&total)
 
-	// Return the paginated response
 	c.JSON(200, gin.H{
 		"data":       records,
 		"total":      total,

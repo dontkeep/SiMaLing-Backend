@@ -51,8 +51,8 @@ func main() {
 		authorized.PUT("/funds/:id/accept", controllers.AcceptFunds)
 		authorized.PUT("/funds/:id/reject", controllers.RejectFunds)
 		authorized.GET("/funds-by-month-year", controllers.GetFundsByMonthAndYear)
-		authorized.GET("/funds-income", controllers.GetIncomeFunds)   // Admin-only: get total income
-		authorized.GET("/funds-expense", controllers.GetExpenseFunds) // Admin-only: get total expense
+		authorized.GET("/funds-income", controllers.GetIncomeFunds)
+		authorized.GET("/funds-expense", controllers.GetExpenseFunds)
 
 		// Security records management
 		authorized.GET("/security-records", controllers.GetAllSecurityRecord)            // Admin-only
