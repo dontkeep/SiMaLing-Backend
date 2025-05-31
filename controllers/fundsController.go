@@ -37,9 +37,23 @@ func GetFunds(c *gin.Context) {
 	// Calculate the offset
 	offset := (pageInt - 1) * limitInt
 
-	// Retrieve paginated funds from the database
-	var funds []models.Funds
-	result := initializers.DB.Limit(limitInt).Offset(offset).Find(&funds)
+	// Retrieve paginated funds from the database with selected fields and join user name
+	type FundsResponse struct {
+		ID        uint      `json:"id"`
+		Is_Income bool      `json:"is_income"`
+		Status    string    `json:"status"`
+		Amount    float64   `json:"amount"`
+		Block     string    `json:"block"`
+		UserName  string    `json:"user_name"`
+		CreatedAt time.Time `json:"created_at"`
+	}
+
+	var funds []FundsResponse
+	result := initializers.DB.Model(&models.Funds{}).
+		Select("funds.id, funds.is_income, funds.status, funds.amount, funds.block, users.name as user_name, funds.created_at").
+		Joins("left join users on users.id = funds.user_id").
+		Limit(limitInt).Offset(offset).
+		Scan(&funds)
 	if result.Error != nil {
 		c.JSON(400, gin.H{
 			"message": "Failed to get funds",
@@ -68,6 +82,7 @@ func CreateFunds(c *gin.Context) {
 	description := c.PostForm("description")
 	isIncome := c.PostForm("is_income")
 	status := c.PostForm("status")
+	block := c.PostForm("block")
 
 	// Parse the uploaded file
 	file, err := c.FormFile("image")
@@ -119,6 +134,7 @@ func CreateFunds(c *gin.Context) {
 		Description: description,
 		Is_Income:   isIncomeBool,
 		Status:      status,
+		Block:       block,
 	}
 
 	// Save the record to the database
@@ -129,9 +145,39 @@ func CreateFunds(c *gin.Context) {
 		return
 	}
 
+	type FundsResponse struct {
+		ID          uint      `json:"id"`
+		Amount      float64   `json:"amount"`
+		Image       string    `json:"image"`
+		Description string    `json:"description"`
+		Is_Income   bool      `json:"is_income"`
+		Status      string    `json:"status"`
+		CreatedAt   time.Time `json:"created_at"`
+		UserName    string    `json:"user_name"`
+		Block       string    `json:"block"`
+	}
+
+	// Fetch the user's name for the response
+	var user models.User
+	if err := initializers.DB.First(&user, funds.User_Id).Error; err != nil {
+		user.Name = ""
+	}
+
+	response := FundsResponse{
+		ID:          funds.ID,
+		Amount:      funds.Amount,
+		Image:       funds.Image,
+		Description: funds.Description,
+		Is_Income:   funds.Is_Income,
+		Status:      funds.Status,
+		CreatedAt:   funds.CreatedAt,
+		UserName:    user.Name,
+		Block:       funds.Block,
+	}
+
 	c.JSON(200, gin.H{
 		"message": "Funds record created successfully",
-		"data":    funds,
+		"data":    response,
 	})
 }
 
@@ -148,9 +194,39 @@ func DeleteFunds(c *gin.Context) {
 		return
 	}
 
+	// Actually delete the funds record
+	if err := initializers.DB.Delete(&funds).Error; err != nil {
+		c.JSON(500, gin.H{
+			"message": "Failed to delete funds",
+		})
+		return
+	}
+
+	type FundsResponse struct {
+		ID          uint      `json:"id"`
+		Amount      float64   `json:"amount"`
+		Image       string    `json:"image"`
+		Description string    `json:"description"`
+		Is_Income   bool      `json:"is_income"`
+		Status      string    `json:"status"`
+		CreatedAt   time.Time `json:"created_at"`
+		Block       string    `json:"block"`
+	}
+
+	response := FundsResponse{
+		ID:          funds.ID,
+		Amount:      funds.Amount,
+		Image:       funds.Image,
+		Description: funds.Description,
+		Is_Income:   funds.Is_Income,
+		Status:      funds.Status,
+		CreatedAt:   funds.CreatedAt,
+		Block:       funds.Block,
+	}
+
 	c.JSON(200, gin.H{
 		"message": "Funds deleted",
-		"data":    funds,
+		"data":    response,
 	})
 }
 
@@ -238,9 +314,25 @@ func GetFundsByUser(c *gin.Context) {
 		return
 	}
 
-	// Retrieve paginated funds for the user
-	var funds []models.Funds
-	result := initializers.DB.Where("user_id = ?", uid).Limit(limitInt).Offset(offset).Find(&funds)
+	type FundsResponse struct {
+		ID          uint      `json:"id"`
+		Amount      float64   `json:"amount"`
+		Image       string    `json:"image"`
+		Description string    `json:"description"`
+		Is_Income   bool      `json:"is_income"`
+		Status      string    `json:"status"`
+		CreatedAt   time.Time `json:"created_at"`
+		UserName    string    `json:"user_name"`
+		Block       string    `json:"block"`
+	}
+
+	var funds []FundsResponse
+	result := initializers.DB.Model(&models.Funds{}).
+		Select("funds.id, funds.amount, funds.image, funds.description, funds.is_income, funds.status, funds.created_at, users.name as user_name, funds.block").
+		Joins("left join users on users.id = funds.user_id").
+		Where("funds.user_id = ?", uid).
+		Limit(limitInt).Offset(offset).
+		Scan(&funds)
 	if result.Error != nil {
 		c.JSON(400, gin.H{
 			"message": "Failed to get funds",
@@ -275,8 +367,38 @@ func GetFundsById(c *gin.Context) {
 		return
 	}
 
+	// Fetch the user's name for the response
+	var user models.User
+	if err := initializers.DB.First(&user, funds.User_Id).Error; err != nil {
+		user.Name = ""
+	}
+
+	type FundsResponse struct {
+		ID          uint      `json:"id"`
+		Amount      float64   `json:"amount"`
+		Image       string    `json:"image"`
+		Description string    `json:"description"`
+		Is_Income   bool      `json:"is_income"`
+		Status      string    `json:"status"`
+		CreatedAt   time.Time `json:"created_at"`
+		UserName    string    `json:"user_name"`
+		Block       string    `json:"block"`
+	}
+
+	response := FundsResponse{
+		ID:          funds.ID,
+		Amount:      funds.Amount,
+		Image:       funds.Image,
+		Description: funds.Description,
+		Is_Income:   funds.Is_Income,
+		Status:      funds.Status,
+		CreatedAt:   funds.CreatedAt,
+		UserName:    user.Name,
+		Block:       funds.Block,
+	}
+
 	c.JSON(200, gin.H{
-		"data": funds,
+		"data": response,
 	})
 }
 
@@ -305,9 +427,39 @@ func AcceptFunds(c *gin.Context) {
 		return
 	}
 
+	// Fetch the user's name for the response
+	var user models.User
+	if err := initializers.DB.First(&user, funds.User_Id).Error; err != nil {
+		user.Name = ""
+	}
+
+	type FundsResponse struct {
+		ID          uint      `json:"id"`
+		Amount      float64   `json:"amount"`
+		Image       string    `json:"image"`
+		Description string    `json:"description"`
+		Is_Income   bool      `json:"is_income"`
+		Status      string    `json:"status"`
+		CreatedAt   time.Time `json:"created_at"`
+		UserName    string    `json:"user_name"`
+		Block       string    `json:"block"`
+	}
+
+	response := FundsResponse{
+		ID:          funds.ID,
+		Amount:      funds.Amount,
+		Image:       funds.Image,
+		Description: funds.Description,
+		Is_Income:   funds.Is_Income,
+		Status:      funds.Status,
+		CreatedAt:   funds.CreatedAt,
+		UserName:    user.Name,
+		Block:       funds.Block,
+	}
+
 	c.JSON(200, gin.H{
 		"message": "Funds accepted",
-		"data":    funds,
+		"data":    response,
 	})
 }
 
@@ -336,8 +488,38 @@ func RejectFunds(c *gin.Context) {
 		return
 	}
 
+	// Fetch the user's name for the response
+	var user models.User
+	if err := initializers.DB.First(&user, funds.User_Id).Error; err != nil {
+		user.Name = ""
+	}
+
+	type FundsResponse struct {
+		ID          uint      `json:"id"`
+		Amount      float64   `json:"amount"`
+		Image       string    `json:"image"`
+		Description string    `json:"description"`
+		Is_Income   bool      `json:"is_income"`
+		Status      string    `json:"status"`
+		CreatedAt   time.Time `json:"created_at"`
+		UserName    string    `json:"user_name"`
+		Block       string    `json:"block"`
+	}
+
+	response := FundsResponse{
+		ID:          funds.ID,
+		Amount:      funds.Amount,
+		Image:       funds.Image,
+		Description: funds.Description,
+		Is_Income:   funds.Is_Income,
+		Status:      funds.Status,
+		CreatedAt:   funds.CreatedAt,
+		UserName:    user.Name,
+		Block:       funds.Block,
+	}
+
 	c.JSON(200, gin.H{
 		"message": "Funds rejected",
-		"data":    funds,
+		"data":    response,
 	})
 }

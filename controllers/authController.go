@@ -70,6 +70,7 @@ func Login(c *gin.Context) {
 	c.JSON(200, gin.H{
 		"message": "Login success",
 		"token":   tokenString,
+		"role":    user.Role_Id,
 	})
 }
 
@@ -97,7 +98,7 @@ func Logout(c *gin.Context) {
 
 func ExtractTokenMiddleware(c *gin.Context) {
 	tokenString := c.GetHeader("Authorization")
-	if len(tokenString) > 7 && tokenString[:7] == "Bearer" {
+	if len(tokenString) > 7 && tokenString[:7] == "Bearer " {
 		tokenString = tokenString[7:]
 	}
 	c.Set("token", tokenString)
@@ -110,14 +111,15 @@ func Authenticate(c *gin.Context) {
 		c.JSON(400, gin.H{
 			"message": "Token not found",
 		})
+		c.Abort()
 		return
 	}
 
+	// Do NOT remove Bearer prefix, check as-is
 	var blacklistToken models.BlacklistToken
 	if err := initializers.DB.Where("token = ?", tokenString).First(&blacklistToken).Error; err == nil {
-		c.Set("is_blacklisted", true)
-		c.Set("token_string", tokenString)
-		c.Next()
+		c.JSON(401, gin.H{"message": "Token is blacklisted"})
+		c.Abort()
 		return
 	}
 
@@ -127,9 +129,8 @@ func Authenticate(c *gin.Context) {
 	})
 
 	if err != nil || !token.Valid {
-		c.Set("is_invalid", true)
-		c.Set("token_string", tokenString)
-		c.Next()
+		c.JSON(401, gin.H{"message": "Invalid or expired token"})
+		c.Abort()
 		return
 	}
 

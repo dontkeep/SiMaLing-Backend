@@ -76,7 +76,7 @@ func GetAllUsers(c *gin.Context) {
 	type UserResponse struct {
 		ID       uint   `json:"id"`
 		Phone_No string `json:"phone_no"`
-		NIK      string `json:"nik"`
+		Email    string `json:"email"`
 		Name     string `json:"name"`
 		Address  string `json:"address"`
 		Role_Id  uint   `json:"role_id"`
@@ -84,7 +84,7 @@ func GetAllUsers(c *gin.Context) {
 
 	// Retrieve paginated users from the database
 	var users []UserResponse
-	result := initializers.DB.Model(&models.User{}).Select("id, phone_no, nik, name, address, role_id").Limit(limitInt).Offset(offset).Scan(&users)
+	result := initializers.DB.Model(&models.User{}).Select("id, email, phone_no, name, address, role_id").Limit(limitInt).Offset(offset).Scan(&users)
 	if result.Error != nil {
 		c.JSON(400, gin.H{
 			"message": "Failed to get users",
@@ -123,14 +123,35 @@ func GetUser(c *gin.Context) {
 	})
 }
 
+func isAdmin(c *gin.Context) bool {
+	userRole, exists := c.Get("user_id")
+	if !exists {
+		return false
+	}
+	uid, ok := userRole.(uint)
+	if !ok {
+		return false
+	}
+	var user models.User
+	if err := initializers.DB.First(&user, uid).Error; err != nil {
+		return false
+	}
+	return user.Role_Id == 1 // 1 = Admin
+}
+
 func CreateUser(c *gin.Context) {
+	if !isAdmin(c) {
+		c.JSON(403, gin.H{"message": "Forbidden: Admins only"})
+		return
+	}
+
 	var body struct {
-		Phone_No      string
-		Email         string
-		Password      string
-		Name          string
-		Address       string
-		Role_Id       uint
+		Phone_No      string `json:"phone_no"`
+		Email         string `json:"email"`
+		Password      string `json:"password"`
+		Name          string `json:"name"`
+		Address       string `json:"address"`
+		Role_Id       uint   `json:"role_id"`
 		FamilyMembers []struct {
 			Name   string `json:"name"`
 			Status string `json:"status"` // "wife" or "child"
@@ -145,11 +166,18 @@ func CreateUser(c *gin.Context) {
 		return
 	}
 
+	// Hash the password before saving
+	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(body.Password), bcrypt.DefaultCost)
+	if err != nil {
+		c.JSON(500, gin.H{"message": "Failed to hash password"})
+		return
+	}
+
 	// Create the user
 	user := models.User{
 		Phone_No: body.Phone_No,
 		Email:    body.Email,
-		Password: body.Password,
+		Password: string(hashedPassword),
 		Name:     body.Name,
 		Address:  body.Address,
 		Role_Id:  body.Role_Id,
@@ -183,13 +211,36 @@ func CreateUser(c *gin.Context) {
 		}
 	}
 
+	type UserResponse struct {
+		ID       uint   `json:"id"`
+		Phone_No string `json:"phone_no"`
+		Email    string `json:"email"`
+		Name     string `json:"name"`
+		Address  string `json:"address"`
+		Role_Id  uint   `json:"role_id"`
+	}
+
+	response := UserResponse{
+		ID:       user.ID,
+		Phone_No: user.Phone_No,
+		Email:    user.Email,
+		Name:     user.Name,
+		Address:  user.Address,
+		Role_Id:  user.Role_Id,
+	}
+
 	c.JSON(200, gin.H{
 		"message": "User and family members created successfully",
-		"user":    user,
+		"user":    response,
 	})
 }
 
 func UpdateUser(c *gin.Context) {
+	if !isAdmin(c) {
+		c.JSON(403, gin.H{"message": "Forbidden: Admins only"})
+		return
+	}
+
 	id := c.Param("id")
 	var user models.User
 
@@ -227,10 +278,19 @@ func UpdateUser(c *gin.Context) {
 	// Update the user fields
 	user.Phone_No = body.Phone_No
 	user.Email = body.Email
-	user.Password = body.Password
 	user.Name = body.Name
 	user.Address = body.Address
 	user.Role_Id = body.Role_Id
+
+	// Hash the password if it is being updated
+	if body.Password != "" {
+		hashedPassword, err := bcrypt.GenerateFromPassword([]byte(body.Password), bcrypt.DefaultCost)
+		if err != nil {
+			c.JSON(500, gin.H{"message": "Failed to hash password"})
+			return
+		}
+		user.Password = string(hashedPassword)
+	}
 
 	// Save the updated user
 	result = initializers.DB.Save(&user)
@@ -282,13 +342,36 @@ func UpdateUser(c *gin.Context) {
 		}
 	}
 
+	// Prepare response struct
+	type UserResponse struct {
+		ID       uint   `json:"id"`
+		Phone_No string `json:"phone_no"`
+		Email    string `json:"email"`
+		Name     string `json:"name"`
+		Address  string `json:"address"`
+		Role_Id  uint   `json:"role_id"`
+	}
+	response := UserResponse{
+		ID:       user.ID,
+		Phone_No: user.Phone_No,
+		Email:    user.Email,
+		Name:     user.Name,
+		Address:  user.Address,
+		Role_Id:  user.Role_Id,
+	}
+
 	c.JSON(200, gin.H{
 		"message": "User and family members have been updated",
-		"user":    user,
+		"user":    response,
 	})
 }
 
 func DeleteUser(c *gin.Context) {
+	if !isAdmin(c) {
+		c.JSON(403, gin.H{"message": "Forbidden: Admins only"})
+		return
+	}
+
 	id := c.Param("id")
 	var user models.User
 

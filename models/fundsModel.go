@@ -7,6 +7,7 @@ type Funds struct {
 	ID          uint `gorm:"primaryKey"`
 	User        User `gorm:"foreignKey:User_Id"`
 	User_Id     uint
+	Block       string
 	Amount      float64
 	Image       string
 	Description string
