@@ -11,6 +11,128 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
+func GetIncomeFunds(c *gin.Context) {
+	// Get query parameters for pagination
+	page := c.DefaultQuery("page", "1")    // Default to page 1 if not provided
+	limit := c.DefaultQuery("limit", "10") // Default to 10 records per page if not provided
+
+	// Convert query parameters to integers
+	pageInt, err := strconv.Atoi(page)
+	if err != nil || pageInt < 1 {
+		c.JSON(400, gin.H{
+			"message": "Invalid page number",
+		})
+		return
+	}
+
+	limitInt, err := strconv.Atoi(limit)
+	if err != nil || limitInt < 1 {
+		c.JSON(400, gin.H{
+			"message": "Invalid limit number",
+		})
+		return
+	}
+
+	// Calculate the offset
+	offset := (pageInt - 1) * limitInt
+
+	type FundsResponse struct {
+		ID        uint      `json:"id"`
+		Is_Income bool      `json:"is_income"`
+		Status    string    `json:"status"`
+		Amount    float64   `json:"amount"`
+		Block     string    `json:"block"`
+		UserName  string    `json:"user_name"`
+		CreatedAt time.Time `json:"created_at"`
+	}
+
+	var funds []FundsResponse
+	result := initializers.DB.Model(&models.Funds{}).
+		Select("funds.id, funds.is_income, funds.status, funds.amount, funds.block, users.name as user_name, funds.created_at").
+		Joins("left join users on users.id = funds.user_id").
+		Where("funds.is_income = ?", true).
+		Limit(limitInt).Offset(offset).
+		Scan(&funds)
+	if result.Error != nil {
+		c.JSON(400, gin.H{
+			"message": "Failed to get income funds",
+		})
+		return
+	}
+
+	var total int64
+	initializers.DB.Model(&models.Funds{}).Where("is_income = ?", true).Count(&total)
+
+	c.JSON(200, gin.H{
+		"data":       funds,
+		"total":      total,
+		"page":       pageInt,
+		"limit":      limitInt,
+		"totalPages": (total + int64(limitInt) - 1) / int64(limitInt), // Calculate total pages
+	})
+}
+
+func GetExpenseFunds(c *gin.Context) {
+	// Get query parameters for pagination
+	page := c.DefaultQuery("page", "1")    // Default to page 1 if not provided
+	limit := c.DefaultQuery("limit", "10") // Default to 10 records per page if not provided
+
+	// Convert query parameters to integers
+	pageInt, err := strconv.Atoi(page)
+	if err != nil || pageInt < 1 {
+		c.JSON(400, gin.H{
+			"message": "Invalid page number",
+		})
+		return
+	}
+
+	limitInt, err := strconv.Atoi(limit)
+	if err != nil || limitInt < 1 {
+		c.JSON(400, gin.H{
+			"message": "Invalid limit number",
+		})
+		return
+	}
+
+	// Calculate the offset
+	offset := (pageInt - 1) * limitInt
+
+	type FundsResponse struct {
+		ID        uint      `json:"id"`
+		Is_Income bool      `json:"is_income"`
+		Status    string    `json:"status"`
+		Amount    float64   `json:"amount"`
+		Block     string    `json:"block"`
+		UserName  string    `json:"user_name"`
+		CreatedAt time.Time `json:"created_at"`
+	}
+
+	var funds []FundsResponse
+	result := initializers.DB.Model(&models.Funds{}).
+		Select("funds.id, funds.is_income, funds.status, funds.amount, funds.block, users.name as user_name, funds.created_at").
+		Joins("left join users on users.id = funds.user_id").
+		Where("funds.is_income = ?", false).
+		Limit(limitInt).Offset(offset).
+		Scan(&funds)
+	if result.Error != nil {
+		c.JSON(400, gin.H{
+			"message": "Failed to get expense funds",
+		})
+		return
+	}
+
+	var total int64
+	initializers.DB.Model(&models.Funds{}).Where("is_income = ?", false).Count(&total)
+
+	c.JSON(200, gin.H{
+		"data":       funds,
+		"total":      total,
+		"page":       pageInt,
+		"limit":      limitInt,
+		"totalPages": (total + int64(limitInt) - 1) / int64(limitInt), // Calculate total pages
+	})
+}
+
 // GetFunds gets all funds
 func GetFunds(c *gin.Context) {
 	// Get query parameters for pagination
