@@ -43,12 +43,13 @@ func GetIncomeFunds(c *gin.Context) {
 		Amount    float64   `json:"amount"`
 		Block     string    `json:"block"`
 		UserName  string    `json:"user_name"`
+		Image     string    `json:"image"`
 		CreatedAt time.Time `json:"created_at"`
 	}
 
 	var funds []FundsResponse
 	result := initializers.DB.Model(&models.Funds{}).
-		Select("funds.id, funds.is_income, funds.status, funds.amount, funds.block, users.name as user_name, funds.created_at").
+		Select("funds.id, funds.is_income, funds.status, funds.amount, funds.block, users.name as user_name, funds.image, funds.created_at").
 		Joins("left join users on users.id = funds.user_id").
 		Where("funds.is_income = ?", true).
 		Limit(limitInt).Offset(offset).
@@ -104,12 +105,13 @@ func GetExpenseFunds(c *gin.Context) {
 		Amount    float64   `json:"amount"`
 		Block     string    `json:"block"`
 		UserName  string    `json:"user_name"`
+		Image     string    `json:"image"`
 		CreatedAt time.Time `json:"created_at"`
 	}
 
 	var funds []FundsResponse
 	result := initializers.DB.Model(&models.Funds{}).
-		Select("funds.id, funds.is_income, funds.status, funds.amount, funds.block, users.name as user_name, funds.created_at").
+		Select("funds.id, funds.is_income, funds.status, funds.amount, funds.block, users.name as user_name, funds.image, funds.created_at").
 		Joins("left join users on users.id = funds.user_id").
 		Where("funds.is_income = ?", false).
 		Limit(limitInt).Offset(offset).
@@ -167,6 +169,7 @@ func GetFunds(c *gin.Context) {
 		Amount    float64   `json:"amount"`
 		Block     string    `json:"block"`
 		UserName  string    `json:"user_name"`
+		Image     string    `json:"image"`
 		CreatedAt time.Time `json:"created_at"`
 	}
 
