@@ -153,24 +153,41 @@ func getHomeData(c *gin.Context) {
 		Where("created_at >= ? AND created_at < ?", startTime, endTime).
 		Count(&usersAddedThisMonth)
 
-	// Get total income and total expense for the month
-	var totalIncome float64
+	// Get current credit (all time accepted income - all time accepted expense)
+	var totalIncomeAllTime float64
 	initializers.DB.Model(&models.Funds{}).
 		Select("COALESCE(SUM(amount),0)").
-		Where("is_income = ? AND created_at >= ? AND created_at < ?", true, startTime, endTime).
-		Row().Scan(&totalIncome)
+		Where("is_income = ? AND status = ?", true, "Accepted").
+		Row().Scan(&totalIncomeAllTime)
 
-	var totalExpense float64
+	var totalExpenseAllTime float64
 	initializers.DB.Model(&models.Funds{}).
 		Select("COALESCE(SUM(amount),0)").
-		Where("is_income = ? AND created_at >= ? AND created_at < ?", false, startTime, endTime).
-		Row().Scan(&totalExpense)
+		Where("is_income = ? AND status = ?", false, "Accepted").
+		Row().Scan(&totalExpenseAllTime)
+
+	currentCredit := totalIncomeAllTime - totalExpenseAllTime
+
+	// Get total expense for the current month (accepted only)
+	var totalExpenseThisMonth float64
+	initializers.DB.Model(&models.Funds{}).
+		Select("COALESCE(SUM(amount),0)").
+		Where("is_income = ? AND status = ? AND created_at >= ? AND created_at < ?", false, "Accepted", startTime, endTime).
+		Row().Scan(&totalExpenseThisMonth)
+
+	// Get total income for the current month (accepted only)
+	var totalIncomeThisMonth float64
+	initializers.DB.Model(&models.Funds{}).
+		Select("COALESCE(SUM(amount),0)").
+		Where("is_income = ? AND status = ? AND created_at >= ? AND created_at < ?", true, "Accepted", startTime, endTime).
+		Row().Scan(&totalIncomeThisMonth)
 
 	c.JSON(200, gin.H{
 		"total_users":            totalUsers,
 		"users_added_this_month": usersAddedThisMonth,
-		"total_income":           totalIncome,
-		"total_expense":          totalExpense,
+		"current_credit":         currentCredit,
+		"total_expense":          totalExpenseThisMonth,
+		"total_income":           totalIncomeThisMonth,
 		"month":                  int(month),
 		"year":                   year,
 	})
