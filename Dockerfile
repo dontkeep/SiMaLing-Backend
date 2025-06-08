@@ -13,6 +13,7 @@ COPY . .
 # Build the application
 RUN CGO_ENABLED=0 GOOS=linux go build -o main
 
+RUN go run migrate/migrate.go
 # Use a small alpine image for the final container
 FROM alpine:3.21
 
@@ -29,5 +30,5 @@ COPY --from=builder /app/.env.prod .env
 # Expose port 8080
 EXPOSE 3004
 
-# Run the binary
+# Run migration and then start the main app
 CMD ["./main"]

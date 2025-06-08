@@ -560,3 +560,19 @@ func GetSecurityRecordByUser(c *gin.Context) {
 
 	c.JSON(200, gin.H{"data": records})
 }
+
+func isAdmin(c *gin.Context) bool {
+	userRole, exists := c.Get("user_id")
+	if !exists {
+		return false
+	}
+	uid, ok := userRole.(uint)
+	if !ok {
+		return false
+	}
+	var user models.User
+	if err := initializers.DB.First(&user, uid).Error; err != nil {
+		return false
+	}
+	return user.Role_Id == 1 // 1 = Admin
+}

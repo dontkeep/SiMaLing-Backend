@@ -26,15 +26,15 @@ func CreateAdminAccount() error {
 	}
 
 	// Hash the password
-	hashedPassword, err := bcrypt.GenerateFromPassword([]byte("password"), bcrypt.DefaultCost)
+	hashedPassword, err := bcrypt.GenerateFromPassword([]byte("thisissecured"), bcrypt.DefaultCost)
 	if err != nil {
 		return fmt.Errorf("failed to hash password: %v", err)
 	}
 
 	// Create the admin account
 	user = models.User{
-		Phone_No: "081234567890",
-		Email:    "example@gamil.com",
+		Phone_No: "082298588849",
+		Email:    "donnya238@gmail.com",
 		Password: string(hashedPassword),
 		Name:     "Admin",
 		Address:  "Jl. Admin",
@@ -153,9 +153,24 @@ func getHomeData(c *gin.Context) {
 		Where("created_at >= ? AND created_at < ?", startTime, endTime).
 		Count(&usersAddedThisMonth)
 
+	// Get total income and total expense for the month
+	var totalIncome float64
+	initializers.DB.Model(&models.Funds{}).
+		Select("COALESCE(SUM(amount),0)").
+		Where("is_income = ? AND created_at >= ? AND created_at < ?", true, startTime, endTime).
+		Row().Scan(&totalIncome)
+
+	var totalExpense float64
+	initializers.DB.Model(&models.Funds{}).
+		Select("COALESCE(SUM(amount),0)").
+		Where("is_income = ? AND created_at >= ? AND created_at < ?", false, startTime, endTime).
+		Row().Scan(&totalExpense)
+
 	c.JSON(200, gin.H{
 		"total_users":            totalUsers,
 		"users_added_this_month": usersAddedThisMonth,
+		"total_income":           totalIncome,
+		"total_expense":          totalExpense,
 		"month":                  int(month),
 		"year":                   year,
 	})
@@ -164,22 +179,6 @@ func getHomeData(c *gin.Context) {
 // Exported version of getHomeData for routing
 func GetHomeData(c *gin.Context) {
 	getHomeData(c)
-}
-
-func isAdmin(c *gin.Context) bool {
-	userRole, exists := c.Get("user_id")
-	if !exists {
-		return false
-	}
-	uid, ok := userRole.(uint)
-	if !ok {
-		return false
-	}
-	var user models.User
-	if err := initializers.DB.First(&user, uid).Error; err != nil {
-		return false
-	}
-	return user.Role_Id == 1 // 1 = Admin
 }
 
 func CreateUser(c *gin.Context) {
