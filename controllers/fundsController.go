@@ -219,7 +219,7 @@ func GetFunds(c *gin.Context) {
 
 	var funds []FundsResponse
 	db := initializers.DB.Model(&models.Funds{}).
-		Select("funds.id, funds.is_income, funds.status, funds.amount, funds.block, users.name as user_name, funds.created_at").
+		Select("funds.id, funds.is_income, funds.status, funds.amount, funds.image, funds.block, users.name as user_name, funds.created_at").
 		Joins("left join users on users.id = funds.user_id")
 	if useDateFilter {
 		db = db.Where("funds.created_at >= ? AND funds.created_at < ?", startTime, endTime)
