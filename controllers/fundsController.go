@@ -215,7 +215,7 @@ func GetFunds(c *gin.Context) {
 		Block       string    `json:"block"`
 		UserName    string    `json:"user_name"`
 		Image       string    `json:"image"`
-		Description string    `json:"description"` // Tambahkan ini
+		Description string    `json:"description"`
 		CreatedAt   time.Time `json:"created_at"`
 	}
 
