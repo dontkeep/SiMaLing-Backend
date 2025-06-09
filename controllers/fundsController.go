@@ -46,19 +46,20 @@ func GetIncomeFunds(c *gin.Context) {
 	}
 
 	type FundsResponse struct {
-		ID        uint      `json:"id"`
-		Is_Income bool      `json:"is_income"`
-		Status    string    `json:"status"`
-		Amount    float64   `json:"amount"`
-		Block     string    `json:"block"`
-		UserName  string    `json:"user_name"`
-		Image     string    `json:"image"`
-		CreatedAt time.Time `json:"created_at"`
+		ID          uint      `json:"id"`
+		Is_Income   bool      `json:"is_income"`
+		Status      string    `json:"status"`
+		Amount      float64   `json:"amount"`
+		Block       string    `json:"block"`
+		UserName    string    `json:"user_name"`
+		Image       string    `json:"image"`
+		Description string    `json:"description"`
+		CreatedAt   time.Time `json:"created_at"`
 	}
 
 	var funds []FundsResponse
 	db := initializers.DB.Model(&models.Funds{}).
-		Select("funds.id, funds.is_income, funds.status, funds.amount, funds.block, users.name as user_name, funds.image, funds.created_at").
+		Select("funds.id, funds.is_income, funds.status, funds.amount, funds.block, users.name as user_name, funds.image, funds.description, funds.created_at"). // Tambahkan funds.description
 		Joins("left join users on users.id = funds.user_id").
 		Where("funds.is_income = ?", true)
 	if useDateFilter {
@@ -134,9 +135,9 @@ func GetExpenseFunds(c *gin.Context) {
 
 	var funds []FundsResponse
 	db := initializers.DB.Model(&models.Funds{}).
-		Select("funds.id, funds.is_income, funds.status, funds.amount, funds.block, users.name as user_name, funds.image, funds.created_at").
+		Select("funds.id, funds.is_income, funds.status, funds.amount, funds.block, users.name as user_name, funds.image, funds.description, funds.created_at"). // Tambahkan funds.description
 		Joins("left join users on users.id = funds.user_id").
-		Where("funds.is_income = ?", false)
+		Where("funds.is_income = ?", true)
 	if useDateFilter {
 		db = db.Where("funds.created_at >= ? AND funds.created_at < ?", startTime, endTime)
 	}
@@ -207,19 +208,20 @@ func GetFunds(c *gin.Context) {
 
 	// Retrieve paginated funds from the database with selected fields and join user name
 	type FundsResponse struct {
-		ID        uint      `json:"id"`
-		Is_Income bool      `json:"is_income"`
-		Status    string    `json:"status"`
-		Amount    float64   `json:"amount"`
-		Block     string    `json:"block"`
-		UserName  string    `json:"user_name"`
-		Image     string    `json:"image"`
-		CreatedAt time.Time `json:"created_at"`
+		ID          uint      `json:"id"`
+		Is_Income   bool      `json:"is_income"`
+		Status      string    `json:"status"`
+		Amount      float64   `json:"amount"`
+		Block       string    `json:"block"`
+		UserName    string    `json:"user_name"`
+		Image       string    `json:"image"`
+		Description string    `json:"description"` // Tambahkan ini
+		CreatedAt   time.Time `json:"created_at"`
 	}
 
 	var funds []FundsResponse
 	db := initializers.DB.Model(&models.Funds{}).
-		Select("funds.id, funds.is_income, funds.status, funds.amount, funds.block, users.name as user_name, funds.created_at").
+		Select("funds.id, funds.is_income, funds.status, funds.amount, funds.block, users.name as user_name, funds.image, funds.description, funds.created_at"). // Tambahkan funds.description
 		Joins("left join users on users.id = funds.user_id")
 	if useDateFilter {
 		db = db.Where("funds.created_at >= ? AND funds.created_at < ?", startTime, endTime)
