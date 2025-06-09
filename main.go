@@ -25,6 +25,8 @@ func main() {
 	r := gin.Default()
 	r.Use(cors.Default())
 
+	r.Static("/uploads", "./uploads")
+
 	r.POST("/login", controllers.Login)
 	r.GET("/", controllers.GetRoot)
 	authorized := r.Group("/api")
