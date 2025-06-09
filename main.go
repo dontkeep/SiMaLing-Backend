@@ -12,6 +12,7 @@ import (
 func init() {
 	initializers.LoadEnvVar()
 	initializers.DatabaseConnection()
+    initializers.LoadConfig()
 	if err := controllers.CreateDefaultRoles(); err != nil {
 		log.Fatalf("Failed to create default roles: %v", err)
 	}
