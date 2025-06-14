@@ -5,11 +5,20 @@ import (
 	"path/filepath"
 	"strconv"
 	"time"
+	"strings"
 
 	"github.com/dontkeep/simaling-backend/initializers"
 	"github.com/dontkeep/simaling-backend/models"
 	"github.com/gin-gonic/gin"
 )
+
+// getFullImageURL constructs the full URL for an image based on the base URL and image path
+func getFullImageURL(imagePath string) string {
+    if imagePath == "" {
+        return ""
+    }
+    return initializers.AppConfig.BaseURL + "/" + strings.Replace(imagePath, "\\", "/", -1)
+}
 
 func GetIncomeFunds(c *gin.Context) {
 	// Get query parameters for pagination
@@ -44,21 +53,22 @@ func GetIncomeFunds(c *gin.Context) {
 			useDateFilter = true
 		}
 	}
-
+	
 	type FundsResponse struct {
-		ID        uint      `json:"id"`
-		Is_Income bool      `json:"is_income"`
-		Status    string    `json:"status"`
-		Amount    float64   `json:"amount"`
-		Block     string    `json:"block"`
-		UserName  string    `json:"user_name"`
-		Image     string    `json:"image"`
-		CreatedAt time.Time `json:"created_at"`
+		ID          uint      `json:"id"`
+		Is_Income   bool      `json:"is_income"`
+		Status      string    `json:"status"`
+		Amount      float64   `json:"amount"`
+		Block       string    `json:"block"`
+		UserName    string    `json:"user_name"`
+		Image       string    `json:"image"`
+		Description string    `json:"description"`
+		CreatedAt   time.Time `json:"created_at"`
 	}
 
 	var funds []FundsResponse
 	db := initializers.DB.Model(&models.Funds{}).
-		Select("funds.id, funds.is_income, funds.status, funds.amount, funds.block, users.name as user_name, funds.image, funds.created_at").
+		Select("funds.id, funds.is_income, funds.status, funds.amount, funds.block, users.name as user_name, funds.image, funds.description, funds.created_at"). // Tambahkan funds.description
 		Joins("left join users on users.id = funds.user_id").
 		Where("funds.is_income = ?", true)
 	if useDateFilter {
@@ -134,9 +144,9 @@ func GetExpenseFunds(c *gin.Context) {
 
 	var funds []FundsResponse
 	db := initializers.DB.Model(&models.Funds{}).
-		Select("funds.id, funds.is_income, funds.status, funds.amount, funds.block, users.name as user_name, funds.image, funds.created_at").
+		Select("funds.id, funds.is_income, funds.status, funds.amount, funds.block, users.name as user_name, funds.image, funds.description, funds.created_at").
 		Joins("left join users on users.id = funds.user_id").
-		Where("funds.is_income = ?", false)
+		Where("funds.is_income = ?", true)
 	if useDateFilter {
 		db = db.Where("funds.created_at >= ? AND funds.created_at < ?", startTime, endTime)
 	}
@@ -207,19 +217,20 @@ func GetFunds(c *gin.Context) {
 
 	// Retrieve paginated funds from the database with selected fields and join user name
 	type FundsResponse struct {
-		ID        uint      `json:"id"`
-		Is_Income bool      `json:"is_income"`
-		Status    string    `json:"status"`
-		Amount    float64   `json:"amount"`
-		Block     string    `json:"block"`
-		UserName  string    `json:"user_name"`
-		Image     string    `json:"image"`
-		CreatedAt time.Time `json:"created_at"`
+		ID          uint      `json:"id"`
+		Is_Income   bool      `json:"is_income"`
+		Status      string    `json:"status"`
+		Amount      float64   `json:"amount"`
+		Block       string    `json:"block"`
+		UserName    string    `json:"user_name"`
+		Image       string    `json:"image"`
+		Description string    `json:"description"`
+		CreatedAt   time.Time `json:"created_at"`
 	}
 
 	var funds []FundsResponse
 	db := initializers.DB.Model(&models.Funds{}).
-		Select("funds.id, funds.is_income, funds.status, funds.amount, funds.image, funds.block, users.name as user_name, funds.created_at").
+		Select("funds.id, funds.is_income, funds.status, funds.amount, funds.block, users.name as user_name, funds.image, funds.description, funds.created_at").
 		Joins("left join users on users.id = funds.user_id")
 	if useDateFilter {
 		db = db.Where("funds.created_at >= ? AND funds.created_at < ?", startTime, endTime)
@@ -587,7 +598,7 @@ func GetFundsById(c *gin.Context) {
 	response := FundsResponse{
 		ID:          funds.ID,
 		Amount:      funds.Amount,
-		Image:       funds.Image,
+        Image:       getFullImageURL(funds.Image),
 		Description: funds.Description,
 		Is_Income:   funds.Is_Income,
 		Status:      funds.Status,
