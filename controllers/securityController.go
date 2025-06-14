@@ -73,6 +73,7 @@ func GetScurityRecordToday(c *gin.Context) {
 		Select("security_records.id, security_records.security_id, users.name as security_name, security_records.block, security_records.phone_no, security_records.longitude, security_records.latitude").
 		Joins("left join users on users.id = security_records.security_id").
 		Where("security_records.phone_no = ? AND DATE(security_records.created_at) = ?", user.Phone_No, today).
+		Order("security_records.created_at DESC").
 		Scan(&records)
 	if result.Error != nil {
 		c.JSON(400, gin.H{"message": "Failed to get today's security records"})
@@ -142,7 +143,7 @@ func GetAllSecurityRecord(c *gin.Context) {
 	if useDateFilter {
 		db = db.Where("security_records.created_at >= ? AND security_records.created_at < ?", startTime, endTime)
 	}
-	db = db.Limit(limitInt).Offset(offset)
+	db = db.Order("security_records.created_at DESC").Limit(limitInt).Offset(offset)
 	result := db.Scan(&records)
 	if result.Error != nil {
 		c.JSON(400, gin.H{"message": "Failed to get security records"})
@@ -509,6 +510,7 @@ func GetSecurityRecordByDay(c *gin.Context) {
 		Select("security_records.id, security_records.security_id, users.name as security_name, security_records.block, security_records.phone_no, security_records.longitude, security_records.latitude").
 		Joins("left join users on users.id = security_records.security_id").
 		Where("security_records.created_at >= ? AND security_records.created_at < ?", startOfDay, endOfDay).
+		Order("security_records.created_at DESC").
 		Scan(&records)
 	if result.Error != nil {
 		c.JSON(400, gin.H{"message": "Failed to get security records for the specified day"})
@@ -553,6 +555,7 @@ func GetSecurityRecordByUser(c *gin.Context) {
 		Select("security_records.id, security_records.security_id, users.name as security_name, security_records.block, security_records.phone_no, security_records.longitude, security_records.latitude, security_records.created_at").
 		Joins("left join users on users.id = security_records.security_id").
 		Where("security_records.security_id = ?", securityID).
+		Order("security_records.created_at DESC").
 		Scan(&records)
 	if result.Error != nil {
 		c.JSON(400, gin.H{"message": "Failed to get security records for this user"})
