@@ -12,7 +12,7 @@ import (
 func init() {
 	initializers.LoadEnvVar()
 	initializers.DatabaseConnection()
-    initializers.LoadConfig()
+	initializers.LoadConfig()
 	if err := controllers.CreateDefaultRoles(); err != nil {
 		log.Fatalf("Failed to create default roles: %v", err)
 	}
@@ -58,12 +58,13 @@ func main() {
 		authorized.GET("/funds-expense", controllers.GetExpenseFunds)
 
 		// Security records management
-		authorized.GET("/security-records", controllers.GetAllSecurityRecord)            // Admin-only
-		authorized.POST("/security-records", controllers.CreateSecurityRecord)           // Security-only (legacy)
-		authorized.POST("/security-records/add", controllers.AddSecurityRecord)          // Security-only (new)
-		authorized.GET("/security-records/by-day", controllers.GetSecurityRecordByDay)   // User-only: get security records by day
-		authorized.GET("/security-records/by-user", controllers.GetSecurityRecordByUser) // Security-only: get own records
-		authorized.DELETE("/security-records/:id", controllers.DeleteSecurityRecord)     // Admin-only
+		authorized.GET("/security-records", controllers.GetAllSecurityRecord)                            // Admin-only
+		authorized.POST("/security-records", controllers.CreateSecurityRecord)                           // Security-only (legacy)
+		authorized.POST("/security-records/add", controllers.AddSecurityRecord)                          // Security-only (new)
+		authorized.GET("/security-records/by-day", controllers.GetSecurityRecordByDay)                   // User-only: get security records by day
+		authorized.GET("/security-records/by-user", controllers.GetSecurityRecordByUser)                 // Security-only: get own records
+		authorized.DELETE("/security-records/:id", controllers.DeleteSecurityRecord)                     // Admin-only
+		authorized.GET("/security-records/by-user-by-day", controllers.GetSecurityRecordByUserAndByDate) // User-only: get security records by user and day
 
 		// Logout
 		authorized.POST("/logout", controllers.Logout)

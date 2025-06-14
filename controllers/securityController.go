@@ -565,6 +565,67 @@ func GetSecurityRecordByUser(c *gin.Context) {
 	c.JSON(200, gin.H{"data": records})
 }
 
+// GetSecurityRecordByUserAndByDate returns all security records for the authenticated security user for a specific date
+func GetSecurityRecordByUserAndByDate(c *gin.Context) {
+	if !isSecurity(c) {
+		c.JSON(403, gin.H{"message": "Forbidden: Security only"})
+		return
+	}
+
+	// Get security user id from context
+	userID, exists := c.Get("user_id")
+	if !exists {
+		c.JSON(400, gin.H{"message": "User not authenticated"})
+		return
+	}
+	securityID, ok := userID.(uint)
+	if !ok {
+		c.JSON(400, gin.H{"message": "Invalid user ID"})
+		return
+	}
+
+	// Get date from query parameter
+	date := c.Query("date")
+	if date == "" {
+		c.JSON(400, gin.H{"message": "Date query parameter is required (YYYY-MM-DD)"})
+		return
+	}
+
+	// Parse the date and get start/end of day
+	parsedDate, err := time.Parse("2006-01-02", date)
+	if err != nil {
+		c.JSON(400, gin.H{"message": "Invalid date format. Use YYYY-MM-DD."})
+		return
+	}
+	startOfDay := parsedDate
+	endOfDay := parsedDate.Add(24 * time.Hour)
+
+	type SecurityRecordResponse struct {
+		ID           uint      `json:"id"`
+		SecurityId   uint      `json:"security_id"`
+		SecurityName string    `json:"security_name"`
+		Block        string    `json:"block"`
+		PhoneNo      string    `json:"phone_no"`
+		Longitude    string    `json:"longitude"`
+		Latitude     string    `json:"latitude"`
+		CreatedAt    time.Time `json:"created_at"`
+	}
+
+	var records []SecurityRecordResponse
+	result := initializers.DB.Model(&models.SecurityRecord{}).
+		Select("security_records.id, security_records.security_id, users.name as security_name, security_records.block, security_records.phone_no, security_records.longitude, security_records.latitude, security_records.created_at").
+		Joins("left join users on users.id = security_records.security_id").
+		Where("security_records.security_id = ? AND security_records.created_at >= ? AND security_records.created_at < ?", securityID, startOfDay, endOfDay).
+		Order("security_records.created_at DESC").
+		Scan(&records)
+	if result.Error != nil {
+		c.JSON(400, gin.H{"message": "Failed to get security records for this user and date"})
+		return
+	}
+
+	c.JSON(200, gin.H{"data": records})
+}
+
 func isAdmin(c *gin.Context) bool {
 	userRole, exists := c.Get("user_id")
 	if !exists {
