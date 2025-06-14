@@ -83,9 +83,17 @@ func GetAllUsers(c *gin.Context) {
 		Role_Id  uint   `json:"role_id"`
 	}
 
-	// Retrieve paginated users from the database
+	// Optional: search by name
+	nameQuery := c.Query("name")
+
+	// Retrieve paginated users from the database, with optional name filter
 	var users []UserResponse
-	result := initializers.DB.Model(&models.User{}).Select("id, email, phone_no, name, address, role_id").Limit(limitInt).Offset(offset).Scan(&users)
+
+	dbQuery := initializers.DB.Model(&models.User{}).Select("id, email, phone_no, name, address, role_id")
+	if nameQuery != "" {
+		dbQuery = dbQuery.Where("name ILIKE ?", "%"+nameQuery+"%")
+	}
+	result := dbQuery.Limit(limitInt).Offset(offset).Scan(&users)
 	if result.Error != nil {
 		c.JSON(400, gin.H{
 			"message": "Failed to get users",
@@ -93,9 +101,13 @@ func GetAllUsers(c *gin.Context) {
 		return
 	}
 
-	// Count the total number of users
+	// Count the total number of users (with the same filter)
 	var total int64
-	initializers.DB.Model(&models.User{}).Count(&total)
+	totalQuery := initializers.DB.Model(&models.User{})
+	if nameQuery != "" {
+		totalQuery = totalQuery.Where("name ILIKE ?", "%"+nameQuery+"%")
+	}
+	totalQuery.Count(&total)
 
 	// Return the paginated response
 	c.JSON(200, gin.H{
@@ -125,9 +137,12 @@ func GetUser(c *gin.Context) {
 }
 
 func getHomeData(c *gin.Context) {
-	// Get total users
+	// Get total users (role_id = 2) and total security (role_id = 3)
 	var totalUsers int64
-	initializers.DB.Model(&models.User{}).Count(&totalUsers)
+	initializers.DB.Model(&models.User{}).Where("role_id = ?", 2).Count(&totalUsers)
+
+	var totalSecurity int64
+	initializers.DB.Model(&models.User{}).Where("role_id = ?", 3).Count(&totalSecurity)
 
 	// Get month and year from query, default to current month/year
 	month := time.Now().Month()
@@ -147,10 +162,10 @@ func getHomeData(c *gin.Context) {
 	startTime := time.Date(year, month, 1, 0, 0, 0, 0, time.Local)
 	endTime := startTime.AddDate(0, 1, 0)
 
-	// Get total users added in the month
+	// Get total users added in the month (role_id = 2)
 	var usersAddedThisMonth int64
 	initializers.DB.Model(&models.User{}).
-		Where("created_at >= ? AND created_at < ?", startTime, endTime).
+		Where("created_at >= ? AND created_at < ? AND role_id = ?", startTime, endTime, 2).
 		Count(&usersAddedThisMonth)
 
 	// Get current credit (all time accepted income - all time accepted expense)
@@ -184,6 +199,7 @@ func getHomeData(c *gin.Context) {
 
 	c.JSON(200, gin.H{
 		"total_users":            totalUsers,
+		"total_security":         totalSecurity,
 		"users_added_this_month": usersAddedThisMonth,
 		"current_credit":         currentCredit,
 		"total_expense":          totalExpenseThisMonth,
