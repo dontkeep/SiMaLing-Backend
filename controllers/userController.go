@@ -91,7 +91,7 @@ func GetAllUsers(c *gin.Context) {
 
 	dbQuery := initializers.DB.Model(&models.User{}).Select("id, email, phone_no, name, address, role_id")
 	if nameQuery != "" {
-		dbQuery = dbQuery.Where("name ILIKE ?", "%"+nameQuery+"%")
+		dbQuery = dbQuery.Where("name LIKE ?", "%"+nameQuery+"%")
 	}
 	result := dbQuery.Limit(limitInt).Offset(offset).Scan(&users)
 	if result.Error != nil {
