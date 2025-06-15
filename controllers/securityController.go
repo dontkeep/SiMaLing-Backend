@@ -127,18 +127,19 @@ func GetAllSecurityRecord(c *gin.Context) {
 	}
 
 	type SecurityRecordResponse struct {
-		ID           uint   `json:"id"`
-		SecurityId   uint   `json:"security_id"`
-		SecurityName string `json:"security_name"`
-		Block        string `json:"block"`
-		PhoneNo      string `json:"phone_no"`
-		Longitude    string `json:"longitude"`
-		Latitude     string `json:"latitude"`
+		ID           uint      `json:"id"`
+		SecurityId   uint      `json:"security_id"`
+		SecurityName string    `json:"security_name"`
+		Block        string    `json:"block"`
+		PhoneNo      string    `json:"phone_no"`
+		Longitude    string    `json:"longitude"`
+		Latitude     string    `json:"latitude"`
+		CreatedAt    time.Time `json:"created_at"`
 	}
 
 	var records []SecurityRecordResponse
 	db := initializers.DB.Model(&models.SecurityRecord{}).
-		Select("security_records.id, security_records.security_id, users.name as security_name, security_records.block, security_records.phone_no, security_records.longitude, security_records.latitude").
+		Select("security_records.id, security_records.security_id, users.name as security_name, security_records.block, security_records.phone_no, security_records.longitude, security_records.latitude, security_records.created_at").
 		Joins("left join users on users.id = security_records.security_id")
 	if useDateFilter {
 		db = db.Where("security_records.created_at >= ? AND security_records.created_at < ?", startTime, endTime)
@@ -496,18 +497,19 @@ func GetSecurityRecordByDay(c *gin.Context) {
 	}
 
 	type SecurityRecordResponse struct {
-		ID           uint   `json:"id"`
-		SecurityId   uint   `json:"security_id"`
-		SecurityName string `json:"security_name"`
-		Block        string `json:"block"`
-		PhoneNo      string `json:"phone_no"`
-		Longitude    string `json:"longitude"`
-		Latitude     string `json:"latitude"`
+		ID           uint      `json:"id"`
+		SecurityId   uint      `json:"security_id"`
+		SecurityName string    `json:"security_name"`
+		Block        string    `json:"block"`
+		PhoneNo      string    `json:"phone_no"`
+		Longitude    string    `json:"longitude"`
+		Latitude     string    `json:"latitude"`
+		CreatedAt    time.Time `json:"created_at"`
 	}
 
 	var records []SecurityRecordResponse
 	result := initializers.DB.Model(&models.SecurityRecord{}).
-		Select("security_records.id, security_records.security_id, users.name as security_name, security_records.block, security_records.phone_no, security_records.longitude, security_records.latitude").
+		Select("security_records.id, security_records.security_id, users.name as security_name, security_records.block, security_records.phone_no, security_records.longitude, security_records.latitude, security_records.created_at").
 		Joins("left join users on users.id = security_records.security_id").
 		Where("security_records.created_at >= ? AND security_records.created_at < ?", startOfDay, endOfDay).
 		Order("security_records.created_at DESC").
